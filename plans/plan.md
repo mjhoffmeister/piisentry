@@ -10,7 +10,7 @@ PII Sentry is a .NET 10 CLI powered by the GitHub Copilot SDK that performs conc
 | Component | Where it runs | What it is |
 |---|---|---|
 | **PiiSentry.Cli** | Developer machine | .NET 10 global tool — the single deployable artifact |
-| **Copilot SDK agent** | In-process (inside CLI) | Reasoning engine; JSON-RPC to Copilot CLI process. Orchestrates tool calls, cross-references findings |
+| **Copilot SDK agent** | In-process (inside CLI) | `CopilotClient` + Agent Framework `AIAgent` abstraction (`Microsoft.Agents.AI.GitHub.Copilot`). Orchestrates tool calls, cross-references findings |
 | **Foundry agent** | Azure (data-plane) | Server-side resource in AI Foundry project. Created once at CI/CD time. Wraps Fabric Data Agent via `FabricTool` |
 | **Fabric Data Agent** | Fabric | Ontology-backed agent; only reachable through Foundry Agent Service |
 | **Work IQ MCP server** | Child process (CLI machine) | `npx -y @microsoft/workiq mcp` — stdio MCP; queries M365 artifacts |
@@ -26,10 +26,10 @@ PII Sentry is a .NET 10 CLI powered by the GitHub Copilot SDK that performs conc
 ```
 CLI
  ├─ Copilot SDK agent (in-process reasoning)
- │   ├─ scan_directory / read_file  → local filesystem
+ │   ├─ [built-in file ops]          → local filesystem (approved via OnPermissionRequest)
  │   ├─ query_fabric_data_agent     → Foundry Agent Service (pre-created agent + new thread)
  │   │                                  └─ FabricTool → Fabric Data Agent (OBO)
- │   ├─ query_work_iq               → Work IQ MCP (stdio child process, user's M365 identity)
+ │   ├─ [Work IQ MCP tools]          → native MCP via SessionConfig.McpServers (SDK-managed child process, user's M365 identity)
  │   └─ query_foundry_iq            → AI Search agentic retrieval REST API (direct, no Foundry agent)
  │
  └─ Report generation (local)
@@ -45,7 +45,7 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
 
 1. Initialize repo structure per challenge brief:
    ```
-   /src/PiiSentry.Cli/          — .NET 10 CLI app (GitHub.Copilot.SDK NuGet)
+   /src/PiiSentry.Cli/          — .NET 10 CLI app (GitHub.Copilot.SDK + Microsoft.Agents.AI.GitHub.Copilot NuGet)
    /src/PiiSentry.Core/         — Shared models, contracts, report generation
    /src/PiiSentry.DemoApp/      — Intentionally-violating demo app (ASP.NET Core)
    /infra/                      — Terraform (AzApi v2.8.0) modules
@@ -53,7 +53,7 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
    /presentations/              — PiiSentry.pptx
    /demo-data/                  — Ontology JSON, Word docs, regulatory PDFs
    AGENTS.md                    — Custom instructions for Copilot
-   mcp.json                     — MCP server configs (Work IQ, Fabric IQ agent)
+   mcp.json                     — MCP server config (Work IQ only — for VS Code Copilot discovery; CLI uses SessionConfig.McpServers in code)
    ```
 2. Create `.github/workflows/deploy.yml` — CI/CD pipeline with WIF auth
 3. Create `AGENTS.md` with PII Sentry agent instructions:
@@ -232,7 +232,7 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
     - These are plain-text excerpts (~2-5 pages each), not full regulatory text. Enough to ground vector search answers with citations.
 
 **Deliverables:** Three data sources with realistic, intentional gaps between them
-**SDK feedback opportunity:** Note how the SDK handles custom tool definitions, MCP server integration (Work IQ), and any gaps in documentation for connecting external data sources to Copilot agents.
+**SDK feedback opportunity:** MCP server integration is confirmed working via `SessionConfig.McpServers`. Focus feedback on: `AIFunctionFactory` developer experience, `SessionConfig` API discoverability, permission handler patterns, and any gaps when connecting external data sources to Copilot agents.
 
 ---
 
@@ -272,13 +272,15 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
 
 12. **CLI structure** (`/src/PiiSentry.Cli/`):
     - `dotnet tool` global tool, invoked as `pii-sentry scan <path> [--ring fabric|workiq|foundry|all] [--output report.json|report.html]`
-    - Uses `GitHub.Copilot.SDK` NuGet package for agentic code analysis
+    - Uses `GitHub.Copilot.SDK` + `Microsoft.Agents.AI.GitHub.Copilot` (Agent Framework integration) for agentic code analysis
     - Three-ring architecture implemented as sequential analysis passes
     - **Graceful availability model:** Each ring is attempted in order. If a ring's IQ source is unreachable (auth failure, service unavailable, tenant not configured), the CLI logs that the ring was skipped and why, continues with the remaining rings, and includes a "Ring Availability" section in the report listing which sources were consulted and which were unavailable. No fallback logic — the ring is simply absent from the results.
     - **SDK feedback (ongoing):** As you implement the CLI and agent tools, capture friction points — unclear docs, missing APIs, surprising behaviors, feature gaps. Log these in `/docs/sdk-feedback.md` as you go. This becomes the basis for the bonus-point submission.
 
     **NuGet packages:**
-    - `GitHub.Copilot.SDK` — Copilot agent runtime (session, tools, completions)
+    - `GitHub.Copilot.SDK` — Low-level Copilot SDK (`CopilotClient`, JSON-RPC process lifecycle)
+    - `Microsoft.Agents.AI.GitHub.Copilot` — Agent Framework integration (`GitHubCopilotAgent`, `AIAgent` abstraction, `SessionConfig`). Install with `--prerelease`.
+    - `Microsoft.Extensions.AI` — `AIFunctionFactory.Create()` for registering custom tools
     - `Azure.AI.Projects` — Foundry Agent Service client (`AIProjectClient`, `FabricTool`)
     - `Azure.Identity` — `InteractiveBrowserCredential` / `DefaultAzureCredential` for OBO
     - `Azure.Search.Documents` — Foundry IQ agentic retrieval API calls (if needed directly)
@@ -301,22 +303,26 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
     - `APPLICATIONINSIGHTS_CONNECTION_STRING` — App Insights telemetry
     - `WORKIQ_TENANT_ID` — (optional) M365 tenant ID for Work IQ
 
-12b. **Copilot SDK integration pattern:**
-    The SDK communicates with Copilot CLI via JSON-RPC. The programming model:
-    1. Create a `CopilotClient` that manages the CLI process lifecycle
-    2. Create a `Session` — requires a permission handler callback (SDK enforces this)
-    3. Register custom **tools** that the agent can invoke during its reasoning:
-       - `scan_directory` — lists files in the target codebase path, returns file tree
-       - `read_file` — reads a source file's content (the agent decides which files to inspect)
+12b. **Copilot SDK integration pattern (Microsoft Agent Framework):**
+    The SDK communicates with Copilot CLI via JSON-RPC. The Agent Framework provides a consistent `AIAgent` abstraction. The programming model:
+    1. Create a `CopilotClient` and call `StartAsync()` to launch the Copilot CLI process
+    2. Create a `SessionConfig` with:
+       - `OnPermissionRequest` — permission handler callback (required for file reads, shell commands, URL fetches)
+       - `McpServers` — dictionary of MCP server configs (Work IQ as `McpLocalServerConfig` with stdio transport)
+    3. Register custom **function tools** via `AIFunctionFactory.Create()` (from `Microsoft.Extensions.AI`):
        - `query_fabric_data_agent` — invokes Ring 1 (calls Foundry Agent Service → Fabric Data Agent)
-       - `query_work_iq` — invokes Ring 2 (calls Work IQ MCP server for business artifacts)
        - `query_foundry_iq` — invokes Ring 3 (calls Foundry IQ agentic retrieval API)
-    4. Send the agent a message with the AGENTS.md system prompt + "Scan this codebase for PII/PHI handling violations using all available rings"
-    5. The agent autonomously calls tools: reads code files, queries each ring for requirements, compares, and produces structured findings
-    6. Parse the agent's structured response into `ComplianceReport` model
+       - *(Ring 2 tools are provided natively by the Work IQ MCP server via `SessionConfig.McpServers`)*
+       - **File reading:** The Copilot agent has built-in capabilities for file reads and shell commands (gated by `OnPermissionRequest`). Use these for code scanning instead of custom `scan_directory`/`read_file` tools — the agent already knows how to navigate codebases. The permission handler auto-approves reads within the target scan path and denies everything else.
+    4. Create the agent via `copilotClient.AsAIAgent(sessionConfig, tools: [...], instructions: "...")` — returns `AIAgent` with native MCP, permissions, and custom tools. *(Note: `new GitHubCopilotAgent(copilotClient, ...)` also works and adds multi-turn `AgentSession` support, but how `SessionConfig` is passed to this constructor needs verification during implementation — prefer `AsAIAgent` as the primary path.)*
+    5. Run the agent: `await agent.RunAsync("Scan this codebase for PII/PHI handling violations using all available rings")`
+       - For streaming output: `await foreach (var update in agent.RunStreamingAsync(...))`
+       - For multi-turn (reconciliation pass): create `AgentSession session = await agent.GetNewSessionAsync()` and pass to subsequent `RunAsync` calls
+    6. The agent autonomously calls tools: reads code files, queries each ring for requirements, compares, and produces structured findings
+    7. Parse the agent's structured response into `ComplianceReport` model
 
     **How code analysis works:**
-    - The agent does NOT receive the entire codebase in one prompt. Instead, it uses `scan_directory` to discover files, then selectively `read_file` on relevant ones (controllers, services, data access layers, config files)
+    - The agent does NOT receive the entire codebase in one prompt. Instead, it uses its built-in file reading capabilities (approved via `OnPermissionRequest`) to discover and selectively read relevant files (controllers, services, data access layers, config files)
     - The system prompt in AGENTS.md instructs the agent to look for patterns: logging calls with PII fields, unencrypted storage, HTTP endpoints without auth, data retention logic, consent flows
     - Each ring's tool returns requirements text; the agent cross-references requirements against code it has read
     - The agent outputs findings in a structured JSON schema (defined in the system prompt): `{ ring, severity, file, line, violation, requirement, citation, remediation }`
@@ -334,9 +340,21 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
     - Produces: list of violations against *current org standards*
 
 14. **Ring 2 — Work IQ (Uncodified Business Knowledge):**
-    - The `query_work_iq` tool implementation spawns the Work IQ MCP server as a child process (`npx -y @microsoft/workiq mcp`) and communicates via MCP stdio protocol
-    - Alternatively, if the Copilot CLI natively discovers MCP servers from `mcp.json`, the Work IQ tools may be available as first-class agent tools without custom wrapping — verify during implementation
-    - Sends query: "What recent decisions, policies, or guidelines about PII/PHI handling have been discussed in documents, meetings, or emails?"
+    - Work IQ is configured as a **native MCP server** via `SessionConfig.McpServers` — the SDK manages the child process lifecycle automatically:
+      ```csharp
+      McpServers = new Dictionary<string, object>
+      {
+          ["workiq"] = new McpLocalServerConfig
+          {
+              Type = "stdio",
+              Command = "npx",
+              Args = ["-y", "@microsoft/workiq", "mcp"],
+              Tools = ["*"],
+          },
+      }
+      ```
+    - Work IQ tools are available as **first-class agent tools** — no custom `query_work_iq` wrapper needed. The agent can directly invoke Work IQ's MCP tools during its reasoning loop.
+    - The agent queries for: "What recent decisions, policies, or guidelines about PII/PHI handling have been discussed in documents, meetings, or emails?"
     - Receives: unstructured text from Word docs, transcripts, emails
     - Runs under the **signed-in user's M365 identity** (Work IQ handles its own auth via browser login); only surfaces content the user has permission to see
     - Work IQ will prompt for EULA acceptance on first use (`workiq accept-eula`)
@@ -413,7 +431,7 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
 ### Bonus Point Actions
 24. **Copilot SDK product feedback (10 pts):** Compile `/docs/sdk-feedback.md` (accumulated during Phases 1-4) into actionable feedback. Post to the Copilot SDK Teams channel. Take screenshot and include in submission. Categories to capture:
     - Documentation gaps or inaccuracies (especially .NET cookbook)
-    - Missing APIs or SDK features (e.g., `FabricTool` .NET parity, MCP client support)
+    - Missing APIs or SDK features (e.g., `FabricTool` .NET parity, `SessionConfig` API discoverability)
     - Surprising behaviors or error messages
     - Feature requests based on real implementation needs
 25. **Customer validation (10 pts):** If possible, validate with an internal compliance/security team or external customer. Include testimonial release form in `/customer/` folder, or document the validation interaction.
@@ -424,7 +442,7 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
 
 - `/src/PiiSentry.Cli/Program.cs` — CLI entry point, command parser, orchestrator
 - `/src/PiiSentry.Cli/Agents/FabricDataAgent.cs` — Ring 1: creates a thread on the pre-provisioned Foundry agent (by ID), queries ontology-backed data agent via `AIProjectClient`
-- `/src/PiiSentry.Cli/Agents/WorkIqAgent.cs` — Ring 2: queries Work IQ MCP for business artifacts
+- `/src/PiiSentry.Cli/Agents/WorkIqAgent.cs` — Ring 2: configures `McpLocalServerConfig` for Work IQ, parses MCP tool results into ring findings
 - `/src/PiiSentry.Cli/Agents/FoundryIqAgent.cs` — Ring 3: queries Foundry IQ knowledge base for regulatory intel
 - `/src/PiiSentry.Cli/Agents/ReconciliationAgent.cs` — Cross-ring analysis and gap reconciliation
 - `/src/PiiSentry.Core/Models/` — Violation, Finding, ComplianceReport, Ring, RingAvailability models
@@ -438,7 +456,7 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
 - `/demo-data/regulatory/` — Regulatory text PDFs for Foundry IQ vector store
 - `/.github/workflows/deploy.yml` — CI/CD with WIF auth (infra + Fabric ALM), build, test
 - `/AGENTS.md` — Copilot agent instructions
-- `/mcp.json` — MCP server configurations (Work IQ)
+- `/mcp.json` — MCP server config for VS Code Copilot discovery (Work IQ only; the CLI uses `SessionConfig.McpServers` in code)
 - `/docs/README.md` — Full documentation
 - `/docs/architecture.md` — Architecture diagram
 - `/docs/rai-notes.md` — Responsible AI notes (data minimization, transparency, permissions, human oversight, no retention, auditability)
@@ -464,12 +482,12 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
 ## Decisions
 
 - **Fabric IQ integration:** The Fabric Data Agent (ontology-backed) is **consumed via Foundry Agent Service** using a **pre-created Foundry agent**. The agent is created once at CI/CD time (post-provisioning script, step 8c) with `FabricTool` attached via a Foundry connection. Foundry agents are data-plane resources — they cannot be managed by Terraform. The CLI reads the agent ID from config (`FOUNDRY_FABRIC_AGENT_ID`), creates a disposable thread per scan, queries the ontology, and deletes the thread. All queries use OBO identity passthrough. There is no direct REST/MCP to the Fabric Data Agent.
-- **Single-project architecture:** There is one deployable artifact (`PiiSentry.Cli`). The Copilot SDK agent runs in-process (local reasoning). The Foundry agent is a remote resource (Ring 1 only). Work IQ is a child-process MCP server. Foundry IQ (AI Search) is a direct REST call. No separate hosted apps or sidecar services are needed.
+- **Single-project architecture:** There is one deployable artifact (`PiiSentry.Cli`). The Copilot SDK agent runs in-process (local reasoning). The Foundry agent is a remote resource (Ring 1 only). Work IQ is an SDK-managed native MCP server (via `McpLocalServerConfig`). Foundry IQ (AI Search) is a direct REST call. No separate hosted apps or sidecar services are needed.
 - **Fabric Data Agent source control:** Data agent config (ontology schema selection, AI instructions, few-shot examples) is versioned in Git via Fabric Git integration. The repo stores `datasource.json`, `fewshots.json`, and `stage_config.json` under the data agent folder. CI/CD SPN can sync Git → Fabric workspace and promote via deployment pipelines (dev → test → prod). SPN is **not** supported for data agent queries.
 - **Identity model:** All three IQ data-plane queries (Fabric Data Agent via Foundry, Work IQ, Foundry IQ) run under the **end user's identity** (OBO/delegated). The WIF service principal is used **only for CI/CD infrastructure provisioning and Fabric ALM operations** (git sync, deployment pipeline promotion). Users need at minimum `AI Developer` RBAC role in the Foundry project.
-- **.NET 10 + Copilot SDK:** Use `GitHub.Copilot.SDK` NuGet package. The SDK manages the Copilot CLI process lifecycle; the CLI app defines custom tools for each ring that the Copilot agent invokes.
+- **.NET 10 + Copilot SDK + Agent Framework:** Use `GitHub.Copilot.SDK` (low-level) + `Microsoft.Agents.AI.GitHub.Copilot` (Agent Framework integration). The `CopilotClient` manages the Copilot CLI process lifecycle; the CLI creates an `AIAgent` (or `GitHubCopilotAgent`) with custom function tools (via `AIFunctionFactory.Create()`) and MCP servers (via `SessionConfig.McpServers`). This provides the consistent `AIAgent` abstraction, multi-turn `AgentSession`, streaming, and native MCP server management.
 - **AzApi v2.8.0:** Use azapi_resource for all Azure resources, avoiding azurerm provider. Pin version explicitly.
-- **Work IQ as MCP server:** Work IQ runs as MCP stdio server (`npx -y @microsoft/workiq mcp`). The .NET CLI spawns or connects to this for Ring 2 queries. Runs under the signed-in user's M365 identity.
+- **Work IQ as native MCP server:** Work IQ is configured as an `McpLocalServerConfig` (stdio) in `SessionConfig.McpServers`. The Copilot SDK manages the child process lifecycle — no manual spawning needed. Work IQ tools become first-class agent tools. Runs under the signed-in user's M365 identity.
 - **No fallbacks:** If an IQ source is unavailable, the CLI skips that ring, notes it in the report, and proceeds with the remaining rings. No mock data, no alternative query paths.
 - **Scope boundaries:**
   - IN: CLI tool, three-ring analysis, demo app, infra, docs, presentation
