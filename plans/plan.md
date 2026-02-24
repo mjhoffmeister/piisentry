@@ -52,15 +52,20 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
    /docs/                       — README, architecture diagram, RAI notes
    /presentations/              — PiiSentry.pptx
    /demo-data/                  — Ontology JSON, Word docs, regulatory PDFs
-   AGENTS.md                    — Custom instructions for Copilot
+   AGENTS.md                    — Coding agent instructions (repo conventions, architecture, build commands for VS Code Copilot)
    mcp.json                     — MCP server config (Work IQ only — for VS Code Copilot discovery; CLI uses SessionConfig.McpServers in code)
    ```
 2. Create `.github/workflows/deploy.yml` — CI/CD pipeline with WIF auth
-3. Create `AGENTS.md` with PII Sentry agent instructions:
+3. Create `AGENTS.md` with coding-agent instructions for VS Code Copilot:
+   - Repo conventions: project structure, naming, test expectations
+   - Architecture overview: two-layer agent model, three rings, key types
+   - Build / test commands: `dotnet build`, `terraform validate`, etc.
+3b. Create `/src/PiiSentry.Cli/Prompts/SystemPrompt.cs` — runtime system prompt passed to `AsAIAgent(instructions:)`:
    - Persona: "You are PII Sentry, a compliance analyst agent specializing in PII/PHI code review."
    - Behavior: analyze code for PII/PHI handling violations, cross-reference against organizational standards (Ring 1), business artifacts (Ring 2), and regulatory requirements (Ring 3)
    - Output format: structured findings with severity, ring source, code location, citation, and remediation guidance
    - Constraints: never store or log PII found in code, attribute every finding to its source, flag uncertainty
+   - Stored as a C# raw string literal (`public static readonly string Text = """..."""`) so it can be passed to `AsAIAgent(instructions: SystemPrompt.Text)`
 4. Create `mcp.json`:
    ```json
    {
@@ -323,7 +328,7 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
 
     **How code analysis works:**
     - The agent does NOT receive the entire codebase in one prompt. Instead, it uses its built-in file reading capabilities (approved via `OnPermissionRequest`) to discover and selectively read relevant files (controllers, services, data access layers, config files)
-    - The system prompt in AGENTS.md instructs the agent to look for patterns: logging calls with PII fields, unencrypted storage, HTTP endpoints without auth, data retention logic, consent flows
+    - The system prompt in `SystemPrompt.Text` instructs the agent to look for patterns: logging calls with PII fields, unencrypted storage, HTTP endpoints without auth, data retention logic, consent flows
     - Each ring's tool returns requirements text; the agent cross-references requirements against code it has read
     - The agent outputs findings in a structured JSON schema (defined in the system prompt): `{ ring, severity, file, line, violation, requirement, citation, remediation }`
 
@@ -422,7 +427,8 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
       - **No data retention:** CLI does not persist any PII/PHI; reports are generated locally
       - **Bias and fairness:** Regulatory analysis is grounded in source documents, not model opinion; citations ensure auditability
 
-19. **AGENTS.md:** Custom Copilot instructions for PII Sentry agent persona
+19. **AGENTS.md:** Coding-agent instructions for VS Code Copilot (repo conventions, architecture, build commands)
+19b. **`/src/PiiSentry.Cli/Prompts/SystemPrompt.cs`:** Runtime system prompt (PII Sentry persona, behavior, output schema) — passed to `AsAIAgent(instructions: SystemPrompt.Text)`
 20. **mcp.json:** Work IQ MCP server config
 21. **Presentation deck** (`/presentations/PiiSentry.pptx`): 1-2 slides, business value proposition, architecture diagram, **link to GitHub repo** (required by brief)
 22. **Demo video** (3 min max): Show scan of demo app, walkthrough of three rings, reconciliation
@@ -455,7 +461,8 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
 - `/demo-data/docs/` — Word docs and meeting transcript content for Work IQ
 - `/demo-data/regulatory/` — Regulatory text PDFs for Foundry IQ vector store
 - `/.github/workflows/deploy.yml` — CI/CD with WIF auth (infra + Fabric ALM), build, test
-- `/AGENTS.md` — Copilot agent instructions
+- `/AGENTS.md` — Coding-agent instructions for VS Code Copilot (repo conventions, architecture, build commands)
+- `/src/PiiSentry.Cli/Prompts/SystemPrompt.cs` — Runtime system prompt (PII Sentry persona, behavior, output schema) — C# raw string literal passed to `AsAIAgent(instructions:)`
 - `/mcp.json` — MCP server config for VS Code Copilot discovery (Work IQ only; the CLI uses `SessionConfig.McpServers` in code)
 - `/docs/README.md` — Full documentation
 - `/docs/architecture.md` — Architecture diagram
