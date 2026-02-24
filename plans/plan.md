@@ -11,7 +11,7 @@ PII Sentry is a .NET 10 CLI powered by the GitHub Copilot SDK that performs conc
 |---|---|---|
 | **PiiSentry.Cli** | Developer machine | .NET 10 global tool — the single deployable artifact |
 | **Copilot SDK agent** | In-process (inside CLI) | `CopilotClient` + Agent Framework `AIAgent` abstraction (`Microsoft.Agents.AI.GitHub.Copilot`). Orchestrates tool calls, cross-references findings |
-| **Foundry agent** | Azure (data-plane) | Server-side resource in AI Foundry project. Created once at CI/CD time. Wraps Fabric Data Agent via `FabricTool` |
+| **Foundry agent** | Azure (data-plane) | Server-side resource in Foundry project (under Foundry resource). Created once at CI/CD time. Wraps Fabric Data Agent via `FabricTool` |
 | **Fabric Data Agent** | Fabric | Ontology-backed agent; only reachable through Foundry Agent Service |
 | **Work IQ MCP server** | Child process (CLI machine) | `npx -y @microsoft/workiq mcp` — stdio MCP; queries M365 artifacts |
 | **Foundry IQ (AI Search)** | Azure (REST) | Agentic retrieval endpoint — direct REST call from CLI, no Foundry agent needed |
@@ -86,7 +86,7 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
 5. **Terraform modules** (`/infra/`) using AzApi v2.8.0:
    - `main.tf` — Resource group, provider config
    - `modules/ai-search/` — Azure AI Search service (for Foundry IQ knowledge sources/bases)
-   - `modules/ai-foundry/` — Azure AI Foundry project + AI Services (for Foundry Agents + agentic retrieval + Fabric Data Agent connection)
+   - `modules/ai-foundry/` — Foundry resource (`Microsoft.CognitiveServices/accounts`, kind: `AIServices`, `allowProjectManagement = true`) + Foundry project as child resource (for Foundry Agents + agentic retrieval + Fabric Data Agent connection). No Hub required — uses Microsoft-managed storage by default.
    - `modules/storage/` — Azure Blob Storage (regulatory docs for vector indexing)
    - `modules/observability/` — Application Insights + Log Analytics workspace (scan telemetry, ring latency, error tracking)
    - `modules/fabric/` — Fabric capacity — Fabric workspace, ontology, data agent, and Foundry connection are portal-only; document as manual prerequisite
@@ -97,10 +97,9 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
    |---|---|---|
    | Resource Group | `azapi_resource` type `Microsoft.Resources/resourceGroups` | `2024-03-01` |
    | AI Search Service | `azapi_resource` type `Microsoft.Search/searchServices` | `2024-06-01-preview` |
-   | AI Services (multi-service) | `azapi_resource` type `Microsoft.CognitiveServices/accounts` (kind: `AIServices`) | `2024-10-01` |
-   | AI Foundry Hub | `azapi_resource` type `Microsoft.MachineLearningServices/workspaces` (kind: `Hub`) | `2024-10-01` |
-   | AI Foundry Project | `azapi_resource` type `Microsoft.MachineLearningServices/workspaces` (kind: `Project`) | `2024-10-01` |
-   | Foundry Connection (Fabric) | `azapi_resource` type `Microsoft.MachineLearningServices/workspaces/connections` | `2024-10-01` |
+   | Foundry Resource | `azapi_resource` type `Microsoft.CognitiveServices/accounts` (kind: `AIServices`, properties: `allowProjectManagement = true`) | `2025-06-01` |
+   | Foundry Project | `azapi_resource` type `Microsoft.CognitiveServices/accounts/projects` (child of Foundry Resource) | `2025-06-01` |
+   | Foundry Connection (Fabric) | `azapi_resource` type `Microsoft.CognitiveServices/accounts/connections` | `2025-06-01` |
    | Storage Account | `azapi_resource` type `Microsoft.Storage/storageAccounts` | `2023-05-01` |
    | Blob Container | `azapi_resource` type `Microsoft.Storage/storageAccounts/blobServices/containers` | `2023-05-01` |
    | App Insights | `azapi_resource` type `Microsoft.Insights/components` | `2020-02-02` |
@@ -113,6 +112,8 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
    - Provider block: `azapi = { source = "azure/azapi", version = "~> 2.8.0" }`
    - Backend: `azurerm` backend with storage account for state (or local for demo)
    - Variables: `location`, `project_name`, `fabric_capacity_sku` (default `F2`), `search_sku` (default `basic`), `admin_object_id` (Entra user for RBAC)
+   - **Prerequisite:** Register `Microsoft.CognitiveServices` resource provider (`az provider register --namespace 'Microsoft.CognitiveServices'`)
+   - **RBAC:** `Azure AI Account Owner` role needed to create Foundry resource and project; `Azure AI User` to create/edit agents
 
 6. **CI/CD pipeline** (`.github/workflows/deploy.yml`):
    - Authenticate via WIF (federated identity credential on Entra app registration) — **infra provisioning + Fabric ALM only**
@@ -302,7 +303,7 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
     **Configuration (`appsettings.json` or env vars):**
     - `FOUNDRY_PROJECT_ENDPOINT` — AI Foundry project endpoint
     - `FOUNDRY_FABRIC_AGENT_ID` — Pre-created Foundry agent ID (from CI/CD post-provisioning, step 8c). The CLI uses this to create threads, not agents.
-    - `FABRIC_CONNECTION_ID` — Foundry connection ID for Fabric Data Agent (format: `/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.MachineLearningServices/workspaces/{project}/connections/{name}`). Used at **CI/CD setup time** (step 8c) to attach the Fabric Data Agent to the Foundry agent; not used at CLI runtime.
+    - `FABRIC_CONNECTION_ID` — Foundry connection ID for Fabric Data Agent (format: `/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.CognitiveServices/accounts/{foundry-resource}/connections/{name}`). Used at **CI/CD setup time** (step 8c) to attach the Fabric Data Agent to the Foundry agent; not used at CLI runtime.
     - `AI_SEARCH_ENDPOINT` — Azure AI Search endpoint for Foundry IQ knowledge base
     - `AI_SEARCH_KNOWLEDGE_BASE` — Knowledge base name
     - `APPLICATIONINSIGHTS_CONNECTION_STRING` — App Insights telemetry
@@ -475,7 +476,7 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
 
 1. `dotnet build /src/PiiSentry.Cli/` compiles without errors on .NET 10
 2. `terraform validate` passes on `/infra/`
-3. `terraform plan` shows expected resources (AI Search, AI Foundry, Storage, App Insights, Log Analytics, identity)
+3. `terraform plan` shows expected resources (AI Search, Foundry resource, Foundry project, Storage, App Insights, Log Analytics, identity)
 4. CI/CD pipeline authenticates via WIF and runs `terraform apply` + `dotnet build` successfully
 5. `pii-sentry scan ./src/PiiSentry.DemoApp/ --ring fabric` returns Ring 1 findings
 6. `pii-sentry scan ./src/PiiSentry.DemoApp/ --ring workiq` returns Ring 1 + Ring 2 findings
@@ -488,12 +489,13 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
 
 ## Decisions
 
+- **Foundry resource model (not Hub-based):** The plan uses the **new Foundry resource** (`Microsoft.CognitiveServices/accounts`, kind: `AIServices`, `allowProjectManagement = true`) — not the legacy Hub-based model (`Microsoft.MachineLearningServices/workspaces`, kind: `Hub`). Hub-based projects are deprecated; new features (including GA Agent Service) only land on the Foundry resource type. Projects are child resources (`Microsoft.CognitiveServices/accounts/projects`). Connections are at the Foundry resource level (`Microsoft.CognitiveServices/accounts/connections`). No mandatory Key Vault or Storage Account — uses Microsoft-managed storage. Reference: `microsoft-foundry/foundry-samples/infrastructure/infrastructure-setup-terraform/00-basic`.
 - **Fabric IQ integration:** The Fabric Data Agent (ontology-backed) is **consumed via Foundry Agent Service** using a **pre-created Foundry agent**. The agent is created once at CI/CD time (post-provisioning script, step 8c) with `FabricTool` attached via a Foundry connection. Foundry agents are data-plane resources — they cannot be managed by Terraform. The CLI reads the agent ID from config (`FOUNDRY_FABRIC_AGENT_ID`), creates a disposable thread per scan, queries the ontology, and deletes the thread. All queries use OBO identity passthrough. There is no direct REST/MCP to the Fabric Data Agent.
 - **Single-project architecture:** There is one deployable artifact (`PiiSentry.Cli`). The Copilot SDK agent runs in-process (local reasoning). The Foundry agent is a remote resource (Ring 1 only). Work IQ is an SDK-managed native MCP server (via `McpLocalServerConfig`). Foundry IQ (AI Search) is a direct REST call. No separate hosted apps or sidecar services are needed.
 - **Fabric Data Agent source control:** Data agent config (ontology schema selection, AI instructions, few-shot examples) is versioned in Git via Fabric Git integration. The repo stores `datasource.json`, `fewshots.json`, and `stage_config.json` under the data agent folder. CI/CD SPN can sync Git → Fabric workspace and promote via deployment pipelines (dev → test → prod). SPN is **not** supported for data agent queries.
 - **Identity model:** All three IQ data-plane queries (Fabric Data Agent via Foundry, Work IQ, Foundry IQ) run under the **end user's identity** (OBO/delegated). The WIF service principal is used **only for CI/CD infrastructure provisioning and Fabric ALM operations** (git sync, deployment pipeline promotion). Users need at minimum `AI Developer` RBAC role in the Foundry project.
 - **.NET 10 + Copilot SDK + Agent Framework:** Use `GitHub.Copilot.SDK` (low-level) + `Microsoft.Agents.AI.GitHub.Copilot` (Agent Framework integration). The `CopilotClient` manages the Copilot CLI process lifecycle; the CLI creates an `AIAgent` (or `GitHubCopilotAgent`) with custom function tools (via `AIFunctionFactory.Create()`) and MCP servers (via `SessionConfig.McpServers`). This provides the consistent `AIAgent` abstraction, multi-turn `AgentSession`, streaming, and native MCP server management.
-- **AzApi v2.8.0:** Use azapi_resource for all Azure resources, avoiding azurerm provider. Pin version explicitly.
+- **AzApi v2.8.0:** Use azapi_resource for all Azure resources. Pin version explicitly. Note: the official Foundry Terraform samples use both AzApi and AzureRM providers; prefer AzApi for consistency.
 - **Work IQ as native MCP server:** Work IQ is configured as an `McpLocalServerConfig` (stdio) in `SessionConfig.McpServers`. The Copilot SDK manages the child process lifecycle — no manual spawning needed. Work IQ tools become first-class agent tools. Runs under the signed-in user's M365 identity.
 - **No fallbacks:** If an IQ source is unavailable, the CLI skips that ring, notes it in the report, and proceeds with the remaining rings. No mock data, no alternative query paths.
 - **Scope boundaries:**
@@ -504,13 +506,13 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
 
 ## Further Considerations
 
-1. **Foundry Agent Service .NET SDK maturity:** The Fabric Data Agent → Foundry integration docs show Python examples (`Azure.AI.Projects`, `Azure.AI.Agents`). The .NET equivalent (`Azure.AI.Projects` NuGet) needs to support `FabricTool`. Verify this early. If the .NET SDK doesn't yet have `FabricTool`, options: (a) wrap a thin Python script that the .NET CLI invokes, or (b) call the Foundry Agent REST API directly from .NET.
+1. **Foundry Agent Service .NET SDK maturity:** The Fabric Data Agent → Foundry integration docs show Python examples (`Azure.AI.Projects`, `Azure.AI.Agents`). The .NET equivalent (`Azure.AI.Projects` NuGet) needs to support `FabricTool`. Verify this early. If the .NET SDK doesn't yet have `FabricTool`, options: (a) wrap a thin Python script that the .NET CLI invokes, or (b) call the Foundry Agent REST API directly from .NET. Note: the SDK now uses `AIProjectClient(endpoint: "your_project_endpoint", credential: new DefaultAzureCredential())` — the `endpoint` is the Foundry project endpoint (not a connection string). See the SDK migration guide for hub-based → Foundry project migration.
 
 2. **Work IQ tenant consent:** Work IQ requires admin consent in the M365 tenant. For the demo, this needs to be set up in advance. If Work IQ is unavailable, Ring 2 is simply skipped and the report notes it.
 
 3. **Scoring optimization for the challenge:**
    - Enterprise applicability (30 pts): PII/PHI compliance is a universal enterprise need. The concentric-ring approach is novel and reusable across industries.
-   - Azure integration (25 pts): AI Search, AI Foundry (Agent Service), Fabric IQ (ontology + data agent), Blob Storage, Entra ID, Application Insights, Log Analytics — deep Microsoft stack.
+   - Azure integration (25 pts): AI Search, Microsoft Foundry (Agent Service on Foundry resource), Fabric IQ (ontology + data agent), Blob Storage, Entra ID, Application Insights, Log Analytics — deep Microsoft stack.
    - Operational readiness (15 pts): Terraform IaC, WIF CI/CD, Fabric deployment pipelines (dev→test→prod), Application Insights telemetry (scan latency, ring metrics, errors), structured logging.
    - Security/RAI (15 pts): OBO identity passthrough on all rings, no PII stored, data minimization (NL queries only, no code exfiltrated), transparent source attribution, human-in-the-loop design, detailed RAI notes.
    - Storytelling (15 pts): "Your compliance posture has blind spots between what you've codified, what your teams know, and what regulations actually require. PII Sentry closes all three gaps in one scan."
