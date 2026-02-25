@@ -90,6 +90,7 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
    - `modules/storage/` — Azure Blob Storage (regulatory docs for vector indexing)
    - `modules/observability/` — Application Insights + Log Analytics workspace (scan telemetry, ring latency, error tracking)
    - `modules/fabric/` — Fabric capacity — Fabric workspace, ontology, data agent, and Foundry connection are portal-only; document as manual prerequisite
+   - **Manual prerequisite:** Enable **Graph in Microsoft Fabric** tenant setting (required for ontology graph features). See [Ontology (preview) required tenant settings](https://learn.microsoft.com/en-us/fabric/iq/ontology/overview-tenant-settings).
    - `modules/identity/` — WIF service principal (infra + ALM only), managed identity, RBAC role assignments (including `AI Developer` role for Foundry users)
 
    **AzApi resource types and API versions:**
@@ -146,23 +147,23 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
 ### 2A: Fabric IQ Ontology — Codified Org Standards (via Fabric Data Agent)
 7. Generate a realistic PII/PHI compliance ontology (`/demo-data/ontology/`):
    - **Entity types:** `PIIDataCategory`, `PHIDataCategory`, `DataHandlingRequirement`, `ComplianceControl`, `ApplicationSystem`, `DataFlow`, `ConsentRecord`
-   - **Relationships:** `DataFlow --handles--> PIIDataCategory`, `ComplianceControl --enforces--> DataHandlingRequirement`, `ApplicationSystem --processes--> DataFlow`
+   - **Relationships (with cardinality):** `DataFlow N:M PIIDataCategory (handles)`, `ComplianceControl N:1 DataHandlingRequirement (enforces)`, `ApplicationSystem 1:N DataFlow (processes)`
    - **Properties with constraints:** retention periods, encryption requirements, access control levels, geographic storage restrictions
    - **Content:** Organization's *current codified interpretation* of HIPAA, GDPR, CCPA — deliberately slightly outdated (e.g., still references pre-2025 HIPAA Safe Harbor categories, missing recent CCPA amendment requirements)
 
 7b. **Ontology seed data — lakehouse table schemas** (`/demo-data/ontology/`):
     Each CSV maps 1:1 to a lakehouse table. The ontology item then defines entity types pointing at these tables.
 
-    - `pii_data_categories.csv` — Columns: `CategoryId, Name, Description, SensitivityLevel, RetentionDays, EncryptionRequired, EncryptionAlgorithm, GeographicRestriction`
+    - `pii_data_categories.csv` — Columns: `CategoryId, Name, Description, SensitivityLevel, RetentionDays, EncryptionRequired, EncryptionAlgorithm, GeographicRestriction` (identity key: `CategoryId`)
       - Sample rows: `SSN, Social Security Number, Direct identifier, Critical, 90, true, AES-128, US-only` ← note AES-128 is deliberately weaker than the Word doc's AES-256
       - `EMAIL, Email Address, Pseudonymizable identifier, High, 365, true, AES-128, None`
       - `BIOMETRIC, Biometric Data, Special category, Critical, 30, true, AES-256, EU-only`
       - `GENETIC, Genetic Data, Special category, Critical, 30, true, AES-256, None` ← missing state-level restrictions (Work IQ gap)
 
-    - `phi_data_categories.csv` — Columns: `CategoryId, Name, Description, HIPAACategory, EncryptionRequired, MinimumAccessLevel`
+    - `phi_data_categories.csv` — Columns: `CategoryId, Name, Description, HIPAACategory, EncryptionRequired, MinimumAccessLevel` (identity key: `CategoryId`)
       - Rows for: Diagnosis, Medications, LabResults, TreatmentPlan, InsuranceInfo
 
-    - `data_handling_requirements.csv` — Columns: `RequirementId, CategoryId, Action, Constraint, Source, LastUpdated`
+    - `data_handling_requirements.csv` — Columns: `RequirementId, CategoryId, Action, Constraint, Source, LastUpdated` (identity key: `RequirementId`)
       - Sample: `REQ-001, SSN, Storage, Must be encrypted at rest, HIPAA Safe Harbor, 2023-06-01` ← outdated date, pre-2025
       - `REQ-002, *, Logging, Never log PII identifiers to application logs, Internal Policy, 2024-01-15`
       - `REQ-003, *, Transmission, All PII must be transmitted over TLS 1.2+, HIPAA §164.312(e), 2023-06-01`
@@ -170,9 +171,9 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
       - `REQ-005, *, Retention, Non-active records must be purged after retention period, Internal Policy, 2024-03-01`
       - Missing: No requirement for DPIA (Foundry IQ gap), no consent flow requirement for biometric (Work IQ gap)
 
-    - `compliance_controls.csv` — Columns: `ControlId, RequirementId, ControlType, Description, VerificationMethod`
-    - `application_systems.csv` — Columns: `SystemId, Name, DataCategories, DataFlows, Owner`
-    - `data_flows.csv` — Columns: `FlowId, SourceSystem, DestSystem, DataCategories, EncryptionInTransit, Protocol`
+    - `compliance_controls.csv` — Columns: `ControlId, RequirementId, ControlType, Description, VerificationMethod` (identity key: `ControlId`)
+    - `application_systems.csv` — Columns: `SystemId, Name, DataCategories, DataFlows, Owner` (identity key: `SystemId`)
+    - `data_flows.csv` — Columns: `FlowId, SourceSystem, DestSystem, DataCategories, EncryptionInTransit, Protocol` (identity key: `FlowId`)
 
     **Ontology item definition** (created in Fabric portal, stored as JSON via Git sync):
     - Maps each CSV/table to an entity type
@@ -184,6 +185,7 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
    - Bind entity types to lakehouse tables (populated from seed CSVs)
    - Create a **Fabric Data Agent** with the ontology as its source — this is the only supported query path for Ring 1
    - The data agent runs under the calling user's identity (OBO); no service-principal access to the data agent for queries
+   - After initial data load into lakehouse tables, **manually refresh the ontology graph** before testing the data agent (upstream data changes are not automatically reflected — see [refresh the graph model](https://learn.microsoft.com/en-us/fabric/iq/ontology/how-to-use-preview-experience#refresh-the-graph-model))
    - **Publish** the data agent so it can be consumed via Foundry Agent Service
    - Create a **Foundry connection** to the published data agent (workspace-id + artifact-id) in AI Foundry project
 
