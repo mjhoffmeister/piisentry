@@ -1,0 +1,48 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/ontology/dataBinding/1.0.0/schema.json",
+  "id": "2cc63c38-2482-4c68-8397-9b3d912be967",
+  "dataBindingConfiguration": {
+    "dataBindingType": "NonTimeSeries",
+    "propertyBindings": [
+      {
+        "sourceColumnName": "CategoryId",
+        "targetPropertyId": "8524292886454577338"
+      },
+      {
+        "sourceColumnName": "Name",
+        "targetPropertyId": "8524292888706625523"
+      },
+      {
+        "sourceColumnName": "Description",
+        "targetPropertyId": "8524292886958001704"
+      },
+      {
+        "sourceColumnName": "SensitivityLevel",
+        "targetPropertyId": "8524292884914757416"
+      },
+      {
+        "sourceColumnName": "RetentionDays",
+        "targetPropertyId": "8524292887935252092"
+      },
+      {
+        "sourceColumnName": "EncryptionRequired",
+        "targetPropertyId": "8524292886122478458"
+      },
+      {
+        "sourceColumnName": "EncryptionAlgorithm",
+        "targetPropertyId": "8524292888212063500"
+      },
+      {
+        "sourceColumnName": "GeographicRestriction",
+        "targetPropertyId": "8524292888043223909"
+      }
+    ],
+    "sourceTableProperties": {
+      "sourceType": "LakehouseTable",
+      "workspaceId": "00000000-0000-0000-0000-000000000000",
+      "itemId": "0f4afffb-9d04-b3b6-4634-e253409e3f34",
+      "sourceTableName": "pii_data_categories",
+      "sourceSchema": "dbo"
+    }
+  }
+}

@@ -210,6 +210,7 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
    - `stage_config.json` contains the `aiInstructions` for the data agent
    - Service principals are supported **only for ALM operations** (git sync, deployment pipeline promotion), not for querying
    - Use Fabric deployment pipelines (dev → test → prod workspaces) for controlled promotion
+   - Examples can be found in the `demo-fabric-artifacts` folder
 
 ### 2A-Post: Foundry Agent Creation (CI/CD Post-Provisioning)
 8c. **Create the Foundry agent via CI/CD post-provisioning** (`/infra/scripts/create-foundry-agent.sh`):

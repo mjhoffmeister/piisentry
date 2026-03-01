@@ -1,0 +1,60 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/dataAgent/definition/dataSource/1.0.0/schema.json",
+  "artifactId": "6d47e37e-f818-bbd8-47b5-4e55b3cf47bb",
+  "workspaceId": "00000000-0000-0000-0000-000000000000",
+  "dataSourceInstructions": null,
+  "displayName": "ONT_PII_Sentry",
+  "type": "ontology",
+  "userDescription": null,
+  "metadata": {},
+  "elements": [
+    {
+      "id": "PIIDataCategory",
+      "is_selected": true,
+      "display_name": "PIIDataCategory",
+      "type": "ontology.entity",
+      "description": "CategoryId,Name,Description,SensitivityLevel,RetentionDays,EncryptionRequired,EncryptionAlgorithm,GeographicRestriction",
+      "children": []
+    },
+    {
+      "id": "PHIDataCategory",
+      "is_selected": true,
+      "display_name": "PHIDataCategory",
+      "type": "ontology.entity",
+      "description": "CategoryId,Name,Description,HIPAACategory,EncryptionRequired,MinimumAccessLevel",
+      "children": []
+    },
+    {
+      "id": "DataHandlingRequirement",
+      "is_selected": true,
+      "display_name": "DataHandlingRequirement",
+      "type": "ontology.entity",
+      "description": "RequirementId,CategoryId,Action,Constraint,Source,LastUpdated",
+      "children": []
+    },
+    {
+      "id": "ComplianceControl",
+      "is_selected": true,
+      "display_name": "ComplianceControl",
+      "type": "ontology.entity",
+      "description": "ControlId,RequirementId,ControlType,Description,VerificationMethod",
+      "children": []
+    },
+    {
+      "id": "ApplicationSystem",
+      "is_selected": true,
+      "display_name": "ApplicationSystem",
+      "type": "ontology.entity",
+      "description": "SystemId,Name,DataCategories,DataFlows,Owner",
+      "children": []
+    },
+    {
+      "id": "DataFlow",
+      "is_selected": true,
+      "display_name": "DataFlow",
+      "type": "ontology.entity",
+      "description": "FlowId,SourceSystem,DestSystem,DataCategories,EncryptionInTransit,Protocol",
+      "children": []
+    }
+  ]
+}

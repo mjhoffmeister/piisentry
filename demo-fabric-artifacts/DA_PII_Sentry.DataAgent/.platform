@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "DataAgent",
+    "displayName": "DA_PII_Sentry"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "e866f460-f1ca-9c25-4e08-bec559f9aae5"
+  }
+}

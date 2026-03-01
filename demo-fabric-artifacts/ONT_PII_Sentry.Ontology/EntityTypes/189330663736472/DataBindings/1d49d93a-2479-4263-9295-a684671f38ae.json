@@ -1,0 +1,44 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/ontology/dataBinding/1.0.0/schema.json",
+  "id": "1d49d93a-2479-4263-9295-a684671f38ae",
+  "dataBindingConfiguration": {
+    "dataBindingType": "NonTimeSeries",
+    "propertyBindings": [
+      {
+        "sourceColumnName": "CategoryId",
+        "targetPropertyId": "1717069985347268837"
+      },
+      {
+        "sourceColumnName": "CategoryType",
+        "targetPropertyId": "1717069984413103445"
+      },
+      {
+        "sourceColumnName": "DestSystem",
+        "targetPropertyId": "8529044117003341571"
+      },
+      {
+        "sourceColumnName": "EncryptionInTransit",
+        "targetPropertyId": "8529044117154753096"
+      },
+      {
+        "sourceColumnName": "FlowId",
+        "targetPropertyId": "8529044118699227838"
+      },
+      {
+        "sourceColumnName": "Protocol",
+        "targetPropertyId": "8529044118946129552"
+      },
+      {
+        "sourceColumnName": "SourceSystem",
+        "targetPropertyId": "8529044115669060408"
+      }
+    ],
+    "sourceTableProperties": {
+      "sourceType": "LakehouseTable",
+      "workspaceId": "00000000-0000-0000-0000-000000000000",
+      "itemId": "0f4afffb-9d04-b3b6-4634-e253409e3f34",
+      "sourceTableName": "data_flows",
+      "sourceSchema": "dbo"
+    }
+  }
+}

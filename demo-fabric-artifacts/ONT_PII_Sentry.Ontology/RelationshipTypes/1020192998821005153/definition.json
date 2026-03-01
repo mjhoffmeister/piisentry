@@ -1,0 +1,13 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/ontology/relationshipType/1.0.0/schema.json",
+  "namespace": "usertypes",
+  "id": "1020192998821005153",
+  "name": "ComplianceControl_Enforces_DataHandlingRequirements",
+  "namespaceType": "Custom",
+  "source": {
+    "entityTypeId": "191498605619430"
+  },
+  "target": {
+    "entityTypeId": "257109714895101"
+  }
+}

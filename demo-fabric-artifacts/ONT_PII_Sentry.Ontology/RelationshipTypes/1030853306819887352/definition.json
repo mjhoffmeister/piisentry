@@ -1,0 +1,13 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/ontology/relationshipType/1.0.0/schema.json",
+  "namespace": "usertypes",
+  "id": "1030853306819887352",
+  "name": "ApplicationSystems_StoreOrProcess_PHI",
+  "namespaceType": "Custom",
+  "source": {
+    "entityTypeId": "116195131595651"
+  },
+  "target": {
+    "entityTypeId": "269890878062280"
+  }
+}
