@@ -1,0 +1,13 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/ontology/relationshipType/1.0.0/schema.json",
+  "namespace": "usertypes",
+  "id": "1048091184750643521",
+  "name": "Dataflows_OriginateFrom_ApplicationSystems",
+  "namespaceType": "Custom",
+  "source": {
+    "entityTypeId": "189330663736472"
+  },
+  "target": {
+    "entityTypeId": "116195131595651"
+  }
+}

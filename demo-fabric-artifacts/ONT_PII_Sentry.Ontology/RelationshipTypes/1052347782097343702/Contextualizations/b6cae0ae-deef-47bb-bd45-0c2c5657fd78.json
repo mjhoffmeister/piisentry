@@ -1,0 +1,23 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/ontology/contextualization/1.0.0/schema.json",
+  "id": "b6cae0ae-deef-47bb-bd45-0c2c5657fd78",
+  "dataBindingTable": {
+    "workspaceId": "00000000-0000-0000-0000-000000000000",
+    "itemId": "0f4afffb-9d04-b3b6-4634-e253409e3f34",
+    "sourceTableName": "data_flows",
+    "sourceSchema": "dbo",
+    "sourceType": "LakehouseTable"
+  },
+  "sourceKeyRefBindings": [
+    {
+      "sourceColumnName": "FlowId",
+      "targetPropertyId": "8529044118699227838"
+    }
+  ],
+  "targetKeyRefBindings": [
+    {
+      "sourceColumnName": "CategoryId",
+      "targetPropertyId": "8524292886454577338"
+    }
+  ]
+}

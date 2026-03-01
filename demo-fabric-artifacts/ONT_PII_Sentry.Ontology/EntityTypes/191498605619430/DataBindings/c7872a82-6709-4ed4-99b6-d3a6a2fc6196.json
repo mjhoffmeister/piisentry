@@ -1,0 +1,36 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/ontology/dataBinding/1.0.0/schema.json",
+  "id": "c7872a82-6709-4ed4-99b6-d3a6a2fc6196",
+  "dataBindingConfiguration": {
+    "dataBindingType": "NonTimeSeries",
+    "propertyBindings": [
+      {
+        "sourceColumnName": "ControlId",
+        "targetPropertyId": "8527501194460535063"
+      },
+      {
+        "sourceColumnName": "RequirementId",
+        "targetPropertyId": "8527501191484298757"
+      },
+      {
+        "sourceColumnName": "ControlType",
+        "targetPropertyId": "8527501193268736662"
+      },
+      {
+        "sourceColumnName": "Description",
+        "targetPropertyId": "8527501192742353479"
+      },
+      {
+        "sourceColumnName": "VerificationMethod",
+        "targetPropertyId": "8527501192320840636"
+      }
+    ],
+    "sourceTableProperties": {
+      "sourceType": "LakehouseTable",
+      "workspaceId": "00000000-0000-0000-0000-000000000000",
+      "itemId": "0f4afffb-9d04-b3b6-4634-e253409e3f34",
+      "sourceTableName": "compliance_controls",
+      "sourceSchema": "dbo"
+    }
+  }
+}

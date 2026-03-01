@@ -1,0 +1,4 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/dataAgent/definition/publishInfo/1.0.0/schema.json",
+  "description": "PII/PHI compliance ontology data agent for PII Sentry. Provides organizational data handling standards, encryption requirements, retention policies, access controls, and system-level data flow mappings."
+}

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/ontology/dataBinding/1.0.0/schema.json",
+  "id": "4b86b759-0119-49eb-9c4c-bd8c35730ac7",
+  "dataBindingConfiguration": {
+    "dataBindingType": "NonTimeSeries",
+    "propertyBindings": [
+      {
+        "sourceColumnName": "SystemId",
+        "targetPropertyId": "8528184303335289579"
+      },
+      {
+        "sourceColumnName": "CategoryId",
+        "targetPropertyId": "1718514022870995523"
+      },
+      {
+        "sourceColumnName": "CategoryType",
+        "targetPropertyId": "1718514023611527890"
+      },
+      {
+        "sourceColumnName": "FlowId",
+        "targetPropertyId": "1718514026623213913"
+      },
+      {
+        "sourceColumnName": "Name",
+        "targetPropertyId": "8528184303274768231"
+      },
+      {
+        "sourceColumnName": "Owner",
+        "targetPropertyId": "8528184303177742340"
+      }
+    ],
+    "sourceTableProperties": {
+      "sourceType": "LakehouseTable",
+      "workspaceId": "00000000-0000-0000-0000-000000000000",
+      "itemId": "0f4afffb-9d04-b3b6-4634-e253409e3f34",
+      "sourceTableName": "application_systems",
+      "sourceSchema": "dbo"
+    }
+  }
+}

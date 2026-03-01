@@ -1,0 +1,13 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/ontology/relationshipType/1.0.0/schema.json",
+  "namespace": "usertypes",
+  "id": "1050818286837496794",
+  "name": "Dataflows_handle_PHI",
+  "namespaceType": "Custom",
+  "source": {
+    "entityTypeId": "189330663736472"
+  },
+  "target": {
+    "entityTypeId": "269890878062280"
+  }
+}

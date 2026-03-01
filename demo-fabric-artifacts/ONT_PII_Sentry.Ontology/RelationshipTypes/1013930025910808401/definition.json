@@ -1,0 +1,13 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/ontology/relationshipType/1.0.0/schema.json",
+  "namespace": "usertypes",
+  "id": "1013930025910808401",
+  "name": "DataHandlingRequirement_Governs_PHI",
+  "namespaceType": "Custom",
+  "source": {
+    "entityTypeId": "257109714895101"
+  },
+  "target": {
+    "entityTypeId": "269890878062280"
+  }
+}

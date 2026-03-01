@@ -146,10 +146,23 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
 
 ### 2A: Fabric IQ Ontology — Codified Org Standards (via Fabric Data Agent)
 7. Generate a realistic PII/PHI compliance ontology (`/demo-data/ontology/`):
-   - **Entity types:** `PIIDataCategory`, `PHIDataCategory`, `DataHandlingRequirement`, `ComplianceControl`, `ApplicationSystem`, `DataFlow`, `ConsentRecord`
-   - **Relationships (with cardinality):** `DataFlow N:M PIIDataCategory (handles)`, `ComplianceControl N:1 DataHandlingRequirement (enforces)`, `ApplicationSystem 1:N DataFlow (processes)`
+   - **Entity types:** `PIIDataCategory`, `PHIDataCategory`, `DataHandlingRequirement`, `ComplianceControl`, `ApplicationSystem`, `DataFlow`
+   - **Relationships:** 
+
+| # | From Entity             | Relationship      | To Entity               | Join                                                                             |
+|---|-------------------------|-------------------|-------------------------|----------------------------------------------------------------------------------|
+| 1 | DataFlow                | handles           | PIIDataCategory         | data_flows.CategoryId → pii_data_categories.CategoryId                           |
+| 2 | DataFlow                | handles           | PHIDataCategory         | data_flows.CategoryId → phi_data_categories.CategoryId                           |
+| 3 | DataFlow                | originatesFrom    | ApplicationSystem       | data_flows.SourceSystem → application_systems.SourceSystem                       |
+| 4 | ApplicationSystem       | storesOrProcesses | PIIDataCategory         | application_systems.CategoryId → pii_data_categories.CategoryId                  |
+| 5 | ApplicationSystem       | storesOrProcesses | PHIDataCategory         | application_systems.CategoryId → phi_data_categories.CategoryId                  |
+| 6 | ComplianceControl       | enforces          | DataHandlingRequirement | compliance_controls.RequirementId → data_handling_requirements.RequirementId     |
+| 7 | DataHandlingRequirement | governs           | PIIDataCategory         | data_handling_requirements.CategoryId → pii_data_categories.CategoryId (* = all) |
+| 8 | DataHandlingRequirement | governs           | PHIDataCategory         | data_handling_requirements.CategoryId → phi_data_categories.CategoryId (* = all) |
+   
    - **Properties with constraints:** retention periods, encryption requirements, access control levels, geographic storage restrictions
    - **Content:** Organization's *current codified interpretation* of HIPAA, GDPR, CCPA — deliberately slightly outdated (e.g., still references pre-2025 HIPAA Safe Harbor categories, missing recent CCPA amendment requirements)
+
 
 7b. **Ontology seed data — lakehouse table schemas** (`/demo-data/ontology/`):
     Each CSV maps 1:1 to a lakehouse table. The ontology item then defines entity types pointing at these tables.
@@ -189,13 +202,15 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
    - **Publish** the data agent so it can be consumed via Foundry Agent Service
    - Create a **Foundry connection** to the published data agent (workspace-id + artifact-id) in AI Foundry project
 
-### 2A-Git: Fabric Data Agent Source Control
-8b. Connect the Fabric workspace to the project's Git repo (GitHub) for version control of data agent config:
+### 2A-Git: Fabric Source Control
+8b. Connect the Fabric workspace to the project's Git repo (GitHub) for version control of ontology and data agent config:
+   - Ontology config is stored as structured JSON within `EntityTypes` and `RelationshipTypes` folders, with each entity and relationship including a `definition.json`
    - Data agent config is stored as structured JSON: `data_agent.json`, `publish_info.json`, `draft/` and `published/` folders
-   - Each data source folder is named with prefix (e.g., `ontology-PiiPhiCompliance/`) and contains `datasource.json` (schema, instructions, `is_selected` flags) and `fewshots.json` (example NL→query pairs)
+   - Each data source folder is named with prefix (e.g., `ontology-PiiPhiCompliance/`) and contains `datasource.json` which represents the schema
    - `stage_config.json` contains the `aiInstructions` for the data agent
    - Service principals are supported **only for ALM operations** (git sync, deployment pipeline promotion), not for querying
    - Use Fabric deployment pipelines (dev → test → prod workspaces) for controlled promotion
+   - Examples can be found in the `demo-fabric-artifacts` folder
 
 ### 2A-Post: Foundry Agent Creation (CI/CD Post-Provisioning)
 8c. **Create the Foundry agent via CI/CD post-provisioning** (`/infra/scripts/create-foundry-agent.sh`):

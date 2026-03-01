@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Ontology",
+    "displayName": "ONT_PII_Sentry"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "6d47e37e-f818-bbd8-47b5-4e55b3cf47bb"
+  }
+}

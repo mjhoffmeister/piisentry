@@ -1,0 +1,40 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/ontology/dataBinding/1.0.0/schema.json",
+  "id": "75814519-579b-4c01-9e2d-59fd6fda62da",
+  "dataBindingConfiguration": {
+    "dataBindingType": "NonTimeSeries",
+    "propertyBindings": [
+      {
+        "sourceColumnName": "CategoryId",
+        "targetPropertyId": "8525947595874561522"
+      },
+      {
+        "sourceColumnName": "Name",
+        "targetPropertyId": "8525947593754224858"
+      },
+      {
+        "sourceColumnName": "Description",
+        "targetPropertyId": "8525947596057063302"
+      },
+      {
+        "sourceColumnName": "HIPAACategory",
+        "targetPropertyId": "8525947593881184724"
+      },
+      {
+        "sourceColumnName": "EncryptionRequired",
+        "targetPropertyId": "8525947596114597010"
+      },
+      {
+        "sourceColumnName": "MinimumAccessLevel",
+        "targetPropertyId": "8525947597288895090"
+      }
+    ],
+    "sourceTableProperties": {
+      "sourceType": "LakehouseTable",
+      "workspaceId": "00000000-0000-0000-0000-000000000000",
+      "itemId": "0f4afffb-9d04-b3b6-4634-e253409e3f34",
+      "sourceTableName": "phi_data_categories",
+      "sourceSchema": "dbo"
+    }
+  }
+}
