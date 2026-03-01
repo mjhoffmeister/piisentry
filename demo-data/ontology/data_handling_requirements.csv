@@ -1,0 +1,16 @@
+RequirementId,CategoryId,Action,Constraint,Source,LastUpdated
+REQ-001,SSN,Storage,Must be encrypted at rest,HIPAA Safe Harbor,2023-06-01
+REQ-002,*,Logging,Never log PII identifiers to application logs,Internal Policy,2024-01-15
+REQ-003,*,Transmission,All PII must be transmitted over TLS 1.2+,HIPAA §164.312(e),2023-06-01
+REQ-004,*,AccessControl,All PHI endpoints require authentication,HIPAA §164.312(d),2023-06-01
+REQ-005,*,Retention,Non-active records must be purged after retention period,Internal Policy,2024-03-01
+REQ-006,EMAIL,Collection,Email addresses must be collected with opt-in consent,GDPR Art. 6,2023-09-15
+REQ-007,BIOMETRIC,Storage,Biometric templates must be stored in isolated data store,Internal Policy,2024-06-01
+REQ-008,FINANCIAL,Transmission,Financial account numbers must never appear in URLs or query strings,PCI-DSS Req 4.2,2023-12-01
+REQ-009,*,Disposal,All PII on decommissioned media must be cryptographically erased,NIST SP 800-88,2024-02-15
+REQ-010,DOB,Display,Date of birth must be masked in UI except for authorized roles,Internal Policy,2024-04-01
+REQ-011,GENETIC,Processing,Genetic data must not be used for employment or insurance decisions,GINA Title II,2023-06-01
+REQ-012,*,BreachNotification,Breaches involving 500+ records must be reported within 60 days,HIPAA §164.408,2023-06-01
+REQ-013,SSN,Display,SSN must be masked to last four digits in all user-facing displays,Internal Policy,2024-01-15
+REQ-014,*,Encryption,All PHI at rest must use AES-128 or stronger encryption,HIPAA §164.312(a),2023-06-01
+REQ-015,PHONE,Collection,Phone numbers require explicit consent before marketing use,TCPA,2024-05-01

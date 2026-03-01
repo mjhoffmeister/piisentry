@@ -1,0 +1,33 @@
+SystemId,Name,CategoryId,CategoryType,FlowId,Owner
+SYS-001,PatientPortal,SSN,PII,FLOW-001,Dr. Sarah Chen
+SYS-001,PatientPortal,EMAIL,PII,FLOW-002,Dr. Sarah Chen
+SYS-001,PatientPortal,DOB,PII,FLOW-002,Dr. Sarah Chen
+SYS-001,PatientPortal,DIAGNOSIS,PHI,FLOW-001,Dr. Sarah Chen
+SYS-001,PatientPortal,MEDICATIONS,PHI,FLOW-005,Dr. Sarah Chen
+SYS-001,PatientPortal,LAB_RESULTS,PHI,FLOW-001,Dr. Sarah Chen
+SYS-002,ClaimsEngine,SSN,PII,FLOW-002,Marcus Johnson
+SYS-002,ClaimsEngine,INSURANCE_INFO,PHI,FLOW-003,Marcus Johnson
+SYS-002,ClaimsEngine,DIAGNOSIS,PHI,FLOW-002,Marcus Johnson
+SYS-002,ClaimsEngine,FINANCIAL,PII,FLOW-003,Marcus Johnson
+SYS-003,AnalyticsPlatform,EMAIL,PII,FLOW-004,Priya Patel
+SYS-003,AnalyticsPlatform,DOB,PII,FLOW-006,Priya Patel
+SYS-003,AnalyticsPlatform,DIAGNOSIS,PHI,FLOW-004,Priya Patel
+SYS-003,AnalyticsPlatform,GENOMIC_HEALTH,PHI,FLOW-006,Priya Patel
+SYS-004,BillingSystem,SSN,PII,FLOW-003,Tom Rodriguez
+SYS-004,BillingSystem,FINANCIAL,PII,FLOW-007,Tom Rodriguez
+SYS-004,BillingSystem,INSURANCE_INFO,PHI,FLOW-003,Tom Rodriguez
+SYS-005,HRPortal,SSN,PII,FLOW-009,Lisa Nakamura
+SYS-005,HRPortal,EMAIL,PII,FLOW-008,Lisa Nakamura
+SYS-005,HRPortal,DOB,PII,FLOW-008,Lisa Nakamura
+SYS-005,HRPortal,PHONE,PII,FLOW-009,Lisa Nakamura
+SYS-005,HRPortal,ADDRESS,PII,FLOW-008,Lisa Nakamura
+SYS-005,HRPortal,BIOMETRIC,PII,FLOW-008,Lisa Nakamura
+SYS-006,GeneticScreeningLab,GENETIC,PII,FLOW-010,Dr. James Walker
+SYS-006,GeneticScreeningLab,GENOMIC_HEALTH,PHI,FLOW-006,Dr. James Walker
+SYS-006,GeneticScreeningLab,DOB,PII,FLOW-006,Dr. James Walker
+SYS-007,NotificationService,EMAIL,PII,FLOW-005,Amir Hassan
+SYS-007,NotificationService,PHONE,PII,FLOW-011,Amir Hassan
+SYS-008,MobileHealthApp,BIOMETRIC,PII,FLOW-012,Karen Liu
+SYS-008,MobileHealthApp,DEVICE_ID,PII,FLOW-013,Karen Liu
+SYS-008,MobileHealthApp,MEDICATIONS,PHI,FLOW-012,Karen Liu
+SYS-008,MobileHealthApp,TREATMENT_PLAN,PHI,FLOW-013,Karen Liu
