@@ -1,0 +1,11 @@
+CategoryId,Name,Description,HIPAACategory,EncryptionRequired,MinimumAccessLevel
+DIAGNOSIS,Diagnosis,Patient diagnosis codes and descriptions,Medical Record,true,Provider
+MEDICATIONS,Medications,Prescribed and administered medications,Medical Record,true,Provider
+LAB_RESULTS,Lab Results,Laboratory test results and panels,Medical Record,true,Provider
+TREATMENT_PLAN,Treatment Plan,Care plans and treatment protocols,Medical Record,true,Provider
+INSURANCE_INFO,Insurance Information,Health plan beneficiary numbers and coverage details,Health Plan,true,Billing
+MENTAL_HEALTH,Mental Health Records,Psychotherapy notes and behavioral health assessments,Psychotherapy Notes,true,Specialist
+SUBSTANCE_ABUSE,Substance Abuse Records,42 CFR Part 2 protected substance abuse treatment records,Substance Abuse,true,Specialist
+IMMUNIZATION,Immunization Records,Vaccination history and records,Medical Record,true,Provider
+RADIOLOGY,Radiology Images,X-ray and MRI imaging data and reports,Medical Record,true,Provider
+GENOMIC_HEALTH,Genomic Health Data,Genetic test results related to clinical care,Medical Record,true,Specialist

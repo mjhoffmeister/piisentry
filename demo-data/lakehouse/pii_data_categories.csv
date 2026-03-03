@@ -1,0 +1,13 @@
+CategoryId,Name,Description,SensitivityLevel,RetentionDays,EncryptionRequired,EncryptionAlgorithm,GeographicRestriction
+SSN,Social Security Number,Direct identifier,Critical,90,true,AES-128,US-only
+EMAIL,Email Address,Pseudonymizable identifier,High,365,true,AES-128,None
+BIOMETRIC,Biometric Data,Special category,Critical,30,true,AES-256,EU-only
+GENETIC,Genetic Data,Special category,Critical,30,true,AES-256,None
+DOB,Date of Birth,Quasi-identifier,Medium,365,true,AES-128,None
+PHONE,Phone Number,Direct identifier,High,180,true,AES-128,None
+ADDRESS,Physical Address,Direct identifier,High,365,true,AES-128,None
+IP_ADDR,IP Address,Pseudonymizable identifier,Medium,90,false,N/A,None
+DL_NUM,Driver License Number,Direct identifier,Critical,90,true,AES-128,US-only
+PASSPORT,Passport Number,Direct identifier,Critical,60,true,AES-256,Country-of-issue
+FINANCIAL,Financial Account Number,Direct identifier,Critical,90,true,AES-256,None
+DEVICE_ID,Device Identifier,Pseudonymizable identifier,Low,730,false,N/A,None

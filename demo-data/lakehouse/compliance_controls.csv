@@ -1,0 +1,16 @@
+ControlId,RequirementId,ControlType,Description,VerificationMethod
+CTRL-001,REQ-001,Technical,AES encryption applied to SSN columns in database,Automated scan of column-level encryption settings
+CTRL-002,REQ-002,Technical,Log scrubbing middleware strips PII patterns before writing to log sinks,Log output audit and regex pattern validation
+CTRL-003,REQ-003,Technical,TLS 1.2+ enforced on all HTTP endpoints via reverse proxy config,SSL Labs scan and certificate chain validation
+CTRL-004,REQ-004,Technical,OAuth 2.0 bearer token validation middleware on all PHI API routes,Penetration test and endpoint auth matrix review
+CTRL-005,REQ-005,Operational,Scheduled purge job runs nightly against expired records,Job execution logs and record count audit
+CTRL-006,REQ-006,Administrative,Consent checkbox on registration form with audit trail,UI walkthrough and consent record database query
+CTRL-007,REQ-007,Technical,Biometric data stored in separate encrypted database with dedicated access credentials,Infrastructure diagram review and access log audit
+CTRL-008,REQ-008,Technical,WAF rule blocks requests containing financial account patterns in URL,WAF rule testing and automated URL pattern scan
+CTRL-009,REQ-009,Operational,Crypto-erase procedure documented and executed during hardware decommission,Decommission checklist and certificate of destruction
+CTRL-010,REQ-010,Technical,UI masking component applied to DOB fields for non-authorized roles,Role-based UI rendering test
+CTRL-011,REQ-011,Administrative,HR policy prohibits genetic data in employment decisions with annual training,Training completion records and policy acknowledgment
+CTRL-012,REQ-012,Operational,Breach notification SOP with 48-hour internal escalation and 60-day HHS notification,Tabletop exercise results and SOP review
+CTRL-013,REQ-013,Technical,SSN display component masks to last 4 digits with server-side enforcement,UI and API response validation test
+CTRL-014,REQ-014,Technical,Transparent Data Encryption enabled on all PHI databases,Database encryption status audit
+CTRL-015,REQ-015,Administrative,Marketing consent workflow with separate opt-in for phone contact,Consent flow walkthrough and audit trail review
