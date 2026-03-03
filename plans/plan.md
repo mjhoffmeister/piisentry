@@ -1,7 +1,7 @@
 # Plan: PII Sentry — Copilot SDK PII/PHI Code Review CLI
 
 ## TL;DR
-PII Sentry is a .NET 10 CLI powered by the GitHub Copilot SDK that performs concentric-ring regulatory review of PII/PHI handling in codebases. It reconciles three data sources — a **Fabric Data Agent** backed by an IQ ontology (codified org standards), **Work IQ** (uncodified business artifacts), and **Foundry IQ** (latest regulatory intelligence via Bing Search + vector store) — to produce a unified compliance gap analysis. Each ring runs under the **signed-in user's identity** (OBO) so results respect the user's actual permissions. Azure infrastructure is provisioned via Terraform (AzApi v2.8.0) with CI/CD using a WIF service principal for **infra provisioning only** (not data-plane queries).
+PII Sentry is a .NET 10 CLI powered by the GitHub Copilot SDK that performs concentric-ring regulatory review of PII/PHI handling in codebases. It reconciles three data sources — a **Fabric Data Agent** backed by lakehouse tables (codified org standards), **Work IQ** (uncodified business artifacts), and **Foundry IQ** (latest regulatory intelligence via Bing Search + vector store) — to produce a unified compliance gap analysis. Each ring runs under the **signed-in user's identity** (OBO) so results respect the user's actual permissions. Azure infrastructure is provisioned via Terraform (AzApi v2.8.0) with CI/CD using a WIF service principal for **infra provisioning only** (not data-plane queries).
 
 ---
 
@@ -12,7 +12,7 @@ PII Sentry is a .NET 10 CLI powered by the GitHub Copilot SDK that performs conc
 | **PiiSentry.Cli** | Developer machine | .NET 10 global tool — the single deployable artifact |
 | **Copilot SDK agent** | In-process (inside CLI) | `CopilotClient` + Agent Framework `AIAgent` abstraction (`Microsoft.Agents.AI.GitHub.Copilot`). Orchestrates tool calls, cross-references findings |
 | **Foundry agent** | Azure (data-plane) | Server-side resource in Foundry project (under Foundry resource). Created once at CI/CD time. Wraps Fabric Data Agent via `FabricTool` |
-| **Fabric Data Agent** | Fabric | Ontology-backed agent; only reachable through Foundry Agent Service |
+| **Fabric Data Agent** | Fabric | Lakehouse-backed agent; only reachable through Foundry Agent Service |
 | **Work IQ MCP server** | Child process (CLI machine) | `npx -y @microsoft/workiq mcp` — stdio MCP; queries M365 artifacts |
 | **Foundry IQ (AI Search)** | Azure (REST) | Agentic retrieval endpoint — direct REST call from CLI, no Foundry agent needed |
 
@@ -51,7 +51,7 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
    /infra/                      — Terraform (AzApi v2.8.0) modules
    /docs/                       — README, architecture diagram, RAI notes
    /presentations/              — PiiSentry.pptx
-   /demo-data/                  — Ontology JSON, Word docs, regulatory PDFs
+   /demo-data/                  — Lakehouse seed CSVs, Word docs, regulatory PDFs
    AGENTS.md                    — Coding agent instructions (repo conventions, architecture, build commands for VS Code Copilot)
    mcp.json                     — MCP server config (Work IQ only — for VS Code Copilot discovery; CLI uses SessionConfig.McpServers in code)
    ```
@@ -89,8 +89,7 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
    - `modules/ai-foundry/` — Foundry resource (`Microsoft.CognitiveServices/accounts`, kind: `AIServices`, `allowProjectManagement = true`) + Foundry project as child resource (for Foundry Agents + agentic retrieval + Fabric Data Agent connection). No Hub required — uses Microsoft-managed storage by default.
    - `modules/storage/` — Azure Blob Storage (regulatory docs for vector indexing)
    - `modules/observability/` — Application Insights + Log Analytics workspace (scan telemetry, ring latency, error tracking)
-   - `modules/fabric/` — Fabric capacity — Fabric workspace, ontology, data agent, and Foundry connection are portal-only; document as manual prerequisite
-   - **Manual prerequisite:** Enable **Graph in Microsoft Fabric** tenant setting (required for ontology graph features). See [Ontology (preview) required tenant settings](https://learn.microsoft.com/en-us/fabric/iq/ontology/overview-tenant-settings).
+   - `modules/fabric/` — Fabric capacity — Fabric workspace, lakehouse, data agent, and Foundry connection are portal-only; document as manual prerequisite
    - `modules/identity/` — WIF service principal (infra + ALM only), managed identity, RBAC role assignments (including `AI Developer` role for Foundry users)
 
    **AzApi resource types and API versions:**
@@ -144,28 +143,15 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
 
 ## Phase 2: Demo Data Generation (Days 2-3)
 
-### 2A: Fabric IQ Ontology — Codified Org Standards (via Fabric Data Agent)
-7. Generate a realistic PII/PHI compliance ontology (`/demo-data/ontology/`):
-   - **Entity types:** `PIIDataCategory`, `PHIDataCategory`, `DataHandlingRequirement`, `ComplianceControl`, `ApplicationSystem`, `DataFlow`
-   - **Relationships:** 
-
-| # | From Entity             | Relationship      | To Entity               | Join                                                                             |
-|---|-------------------------|-------------------|-------------------------|----------------------------------------------------------------------------------|
-| 1 | DataFlow                | handles           | PIIDataCategory         | data_flows.CategoryId → pii_data_categories.CategoryId                           |
-| 2 | DataFlow                | handles           | PHIDataCategory         | data_flows.CategoryId → phi_data_categories.CategoryId                           |
-| 3 | DataFlow                | originatesFrom    | ApplicationSystem       | data_flows.SourceSystem → application_systems.SourceSystem                       |
-| 4 | ApplicationSystem       | storesOrProcesses | PIIDataCategory         | application_systems.CategoryId → pii_data_categories.CategoryId                  |
-| 5 | ApplicationSystem       | storesOrProcesses | PHIDataCategory         | application_systems.CategoryId → phi_data_categories.CategoryId                  |
-| 6 | ComplianceControl       | enforces          | DataHandlingRequirement | compliance_controls.RequirementId → data_handling_requirements.RequirementId     |
-| 7 | DataHandlingRequirement | governs           | PIIDataCategory         | data_handling_requirements.CategoryId → pii_data_categories.CategoryId (* = all) |
-| 8 | DataHandlingRequirement | governs           | PHIDataCategory         | data_handling_requirements.CategoryId → phi_data_categories.CategoryId (* = all) |
-   
+### 2A: Fabric IQ Lakehouse — Codified Org Standards (via Fabric Data Agent)
+7. Generate realistic PII/PHI compliance lakehouse seed data (`/demo-data/lakehouse`):
+   - **Entity types:** `PIIDataCategory`, `PHIDataCategory`, `DataHandlingRequirement`, `ComplianceControl`, `ApplicationSystem`, `DataFlow`   
    - **Properties with constraints:** retention periods, encryption requirements, access control levels, geographic storage restrictions
    - **Content:** Organization's *current codified interpretation* of HIPAA, GDPR, CCPA — deliberately slightly outdated (e.g., still references pre-2025 HIPAA Safe Harbor categories, missing recent CCPA amendment requirements)
 
 
-7b. **Ontology seed data — lakehouse table schemas** (`/demo-data/ontology/`):
-    Each CSV maps 1:1 to a lakehouse table. The ontology item then defines entity types pointing at these tables.
+7b. **Seed data — lakehouse table schemas** (`/demo-data/lakehouse`):
+    Each CSV maps 1:1 to a lakehouse table. CSVs are uploaded as files and loaded to tables within Fabric.
 
     - `pii_data_categories.csv` — Columns: `CategoryId, Name, Description, SensitivityLevel, RetentionDays, EncryptionRequired, EncryptionAlgorithm, GeographicRestriction` (identity key: `CategoryId`)
       - Sample rows: `SSN, Social Security Number, Direct identifier, Critical, 90, true, AES-128, US-only` ← note AES-128 is deliberately weaker than the Word doc's AES-256
@@ -188,25 +174,18 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
     - `application_systems.csv` — Columns: `SystemId, Name, DataCategories, DataFlows, Owner` (identity key: `SystemId`)
     - `data_flows.csv` — Columns: `FlowId, SourceSystem, DestSystem, DataCategories, EncryptionInTransit, Protocol` (identity key: `FlowId`)
 
-    **Ontology item definition** (created in Fabric portal, stored as JSON via Git sync):
-    - Maps each CSV/table to an entity type
-    - Defines relationships: `DataFlow.handles → PIIDataCategory`, `ComplianceControl.enforces → DataHandlingRequirement`
-    - `stage_config.json` contains AI instructions: "You are a compliance knowledge base. Answer questions about the organization's PII and PHI data handling standards, encryption requirements, retention policies, and access control rules. Always cite the specific requirement ID and source."
-
-8. Load ontology into Fabric IQ and configure Fabric Data Agent:
-   - Create ontology item in Fabric workspace (portal)
-   - Bind entity types to lakehouse tables (populated from seed CSVs)
-   - Create a **Fabric Data Agent** with the ontology as its source — this is the only supported query path for Ring 1
+8. Configure Fabric Data Agent:
+   - Create a **Fabric Data Agent** with the Lakehouse tables as its source — this is the only supported query path for Ring 1
+   - Configure instructions for the agent, referencing the data sources as well as response structure
    - The data agent runs under the calling user's identity (OBO); no service-principal access to the data agent for queries
-   - After initial data load into lakehouse tables, **manually refresh the ontology graph** before testing the data agent (upstream data changes are not automatically reflected — see [refresh the graph model](https://learn.microsoft.com/en-us/fabric/iq/ontology/how-to-use-preview-experience#refresh-the-graph-model))
+   - There may be a delay between the time the lakehouse source is added and the agent can begin answering questions
    - **Publish** the data agent so it can be consumed via Foundry Agent Service
    - Create a **Foundry connection** to the published data agent (workspace-id + artifact-id) in AI Foundry project
 
 ### 2A-Git: Fabric Source Control
-8b. Connect the Fabric workspace to the project's Git repo (GitHub) for version control of ontology and data agent config:
-   - Ontology config is stored as structured JSON within `EntityTypes` and `RelationshipTypes` folders, with each entity and relationship including a `definition.json`
+8b. Connect the Fabric workspace to the project's Git repo (GitHub) for version control of data agent config:
    - Data agent config is stored as structured JSON: `data_agent.json`, `publish_info.json`, `draft/` and `published/` folders
-   - Each data source folder is named with prefix (e.g., `ontology-PiiPhiCompliance/`) and contains `datasource.json` which represents the schema
+   - Each data source folder is named with prefix (e.g., `lakehouse-tables-LH_PII_Sentry/`) and contains `datasource.json` which represents the schema
    - `stage_config.json` contains the `aiInstructions` for the data agent
    - Service principals are supported **only for ALM operations** (git sync, deployment pipeline promotion), not for querying
    - Use Fabric deployment pipelines (dev → test → prod workspaces) for controlled promotion
@@ -232,21 +211,21 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
 
 ### 2B: Work IQ Artifacts — Uncodified Business Knowledge
 9. Create realistic M365 artifacts (Word docs, meeting transcripts) stored in SharePoint/OneDrive:
-   - **Word doc:** "Updated PII Handling Guidelines Q1 2026" — contains newer requirements that haven't been codified into the ontology (e.g., "we agreed to start encrypting SSNs at rest with AES-256" but ontology still says "encrypt PII" generically)
-     - Key content to include: "Effective Q1 2026, all SSNs must be encrypted at rest using AES-256-GCM. The previous AES-128-CBC standard is no longer acceptable." (This is MORE specific than the ontology's generic "EncryptionRequired: true, Algorithm: AES-128")
+   - **Word doc:** "Updated PII Handling Guidelines Q1 2026" — contains newer requirements that haven't been codified into the lakehouse tables (e.g., "we agreed to start encrypting SSNs at rest with AES-256" but the lakehouse data still says "encrypt PII" generically)
+     - Key content to include: "Effective Q1 2026, all SSNs must be encrypted at rest using AES-256-GCM. The previous AES-128-CBC standard is no longer acceptable." (This is MORE specific than the lakehouse's generic "EncryptionRequired: true, Algorithm: AES-128")
      - "Biometric data collected from employees or patients must have an explicit consent workflow with opt-out capability before any processing occurs."
    - **Meeting transcript summary:** Legal team discussing new state-level genetic data privacy requirements
      - Key content: "Illinois Genetic Information Privacy Act (GIPA) — effective 2026, requires explicit written consent before collecting, analyzing, or retaining genetic data. We need to update our systems to add consent checks for any genetic marker processing. This applies even in non-clinical contexts."
    - **Email thread:** Security team flagging that biometric data needs separate consent workflows
      - Key content: "Following the Q4 2025 audit, the security team recommends that all biometric hash storage be isolated from regular patient records and requires separate access logging. Current architecture violates this by co-locating biometric hashes with patient demographics."
-   - **Key gap:** These documents contain requirements MORE current than the ontology but LESS authoritative than actual regulations
+   - **Key gap:** These documents contain requirements MORE current than the lakehouse data but LESS authoritative than actual regulations
    - **Setup:** Create these as actual Word/email files in a SharePoint site accessible to the demo user. Work IQ will surface them when queried about PII handling policies.
 
 ### 2C: Foundry IQ — Latest Regulatory Intelligence
 10. Configure Foundry IQ knowledge base with two knowledge sources:
     - **Web (Bing) knowledge source:** Configured to search for latest HIPAA, GDPR, CCPA regulatory updates, enforcement actions, guidance documents
     - **Azure Blob (vector) knowledge source:** Upload actual regulatory text (HIPAA Privacy Rule excerpts, GDPR Articles 5/6/9/32, CCPA/CPRA text) into blob storage → auto-indexed with chunking + vector embeddings
-    - **Key gap:** Actual regulations will reveal requirements that neither the ontology nor the Word docs capture (e.g., GDPR Art. 35 DPIA requirements for high-risk processing)
+    - **Key gap:** Actual regulations will reveal requirements that neither the lakehouse data nor the Word docs capture (e.g., GDPR Art. 35 DPIA requirements for high-risk processing)
 
     **Regulatory text files to upload** (`/demo-data/regulatory/`):
     - `hipaa-privacy-rule-excerpt.txt` — Focus on §164.502 (uses and disclosures), §164.514 (de-identification), §164.312 (technical safeguards — access control, audit controls, integrity, transmission security). Include the 18 Safe Harbor identifiers list.
@@ -276,14 +255,14 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
     **Mapped violations (one per ring to demonstrate gap detection):**
     | Violation | File | Ring that catches it |
     |---|---|---|
-    | Logging SSN/email to console | `PatientController.cs` | Ring 1 (ontology says "never log PII identifiers") |
-    | Plain-text PHI in JSON file | `PatientStore.cs` | Ring 1 (ontology: "encrypt PHI at rest") |
-    | No RBAC on PHI endpoints | `PatientController.cs` | Ring 1 (ontology: "authenticate all PHI access") |
-    | No retention TTL on records | `PatientStore.cs` | Ring 1 (ontology: "90-day retention for non-active records") |
-    | SSNs not encrypted with AES-256 | `PatientStore.cs` | Ring 2 (Word doc says AES-256 specifically; ontology only says "encrypt") |
+    | Logging SSN/email to console | `PatientController.cs` | Ring 1 (Fabric Data Agent says "never log PII identifiers") |
+    | Plain-text PHI in JSON file | `PatientStore.cs` | Ring 1 (Fabric Data Agent: "encrypt PHI at rest") |
+    | No RBAC on PHI endpoints | `PatientController.cs` | Ring 1 (Fabric Data Agent: "authenticate all PHI access") |
+    | No retention TTL on records | `PatientStore.cs` | Ring 1 (Fabric Data Agent: "90-day retention for non-active records") |
+    | SSNs not encrypted with AES-256 | `PatientStore.cs` | Ring 2 (Word doc says AES-256 specifically; lakehouse only says "encrypt") |
     | Biometric data without consent flow | `PatientController.cs` | Ring 2 (email thread discusses consent requirement) |
     | Genetic data without state protections | `GeneticScreeningService.cs` | Ring 2 (meeting transcript: new state genetic data laws) |
-    | HTTP not HTTPS for internal PII transfer | `NotificationService.cs` | Ring 1+3 (both ontology and HIPAA require encrypted transmission) |
+    | HTTP not HTTPS for internal PII transfer | `NotificationService.cs` | Ring 1+3 (both lakehouse data and HIPAA require encrypted transmission) |
     | Automated profiling without DPIA | `AnalyticsController.cs` | Ring 3 (GDPR Art. 35 — only in regulatory text) |
     | No data subject access/deletion endpoint | Missing entirely | Ring 3 (GDPR Art. 15/17 — only in regulatory text) |
 
@@ -350,7 +329,7 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
     - Each ring's tool returns requirements text; the agent cross-references requirements against code it has read
     - The agent outputs findings in a structured JSON schema (defined in the system prompt): `{ ring, severity, file, line, violation, requirement, citation, remediation }`
 
-13. **Ring 1 — Fabric Data Agent (Ontology-Backed Codified Standards) via Foundry Agent Service:**
+13. **Ring 1 — Fabric Data Agent (Lakehouse-Backed Codified Standards) via Foundry Agent Service:**
     - The Fabric Data Agent is **consumed through Foundry Agent Service** using a **pre-created Foundry agent** (provisioned at CI/CD time — see step 8c). The CLI does NOT create agents per scan.
     - At runtime the CLI:
       1. Reads `FOUNDRY_FABRIC_AGENT_ID` from config
@@ -382,7 +361,7 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
     - Runs under the **signed-in user's M365 identity** (Work IQ handles its own auth via browser login); only surfaces content the user has permission to see
     - Work IQ will prompt for EULA acceptance on first use (`workiq accept-eula`)
     - Copilot SDK agent compares these against Ring 1 findings to find:
-      a. New requirements not yet in the ontology (gaps in codification)
+      a. New requirements not yet in the lakehouse tables (gaps in codification)
       b. Additional violations in code that only the informal docs would catch
 
 15. **Ring 3 — Foundry IQ (Regulatory Intelligence):**
@@ -405,15 +384,15 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
         scanPath, timestamp, ringAvailability[],
         findings[]: { id, ring (fabric|workiq|foundry), severity (critical|high|medium|low|info),
                       file, lineRange, violationType, description, requirement, citation, remediation },
-        reconciliation: { ontologyGaps[], codificationRecommendations[], regulatoryDelta[] },
+        reconciliation: { lakehouseGaps[], codificationRecommendations[], regulatoryDelta[] },
         summary: { totalFindings, byRing{}, bySeverity{} }
       }
       ```
     - **HTML report:** Use a single-file HTML template embedded as a resource in `PiiSentry.Core`. Inline CSS + minimal JS for the concentric-ring visualization (three nested SVG circles, findings listed in expandable sections per ring). No external dependencies — the HTML file is self-contained and opens in any browser.
     - **Reconciliation logic** (`ReconciliationAgent.cs`): After all rings complete, a final Copilot SDK prompt takes the combined findings and identifies:
-      - Gaps where the ontology is silent but Work IQ docs or regulations have requirements → "Codify this into your ontology"
-      - Gaps where Work IQ docs discuss a requirement but it's not in the ontology AND not in regulations → "Verify if this is internal policy or regulatory"
-      - Requirements found only in regulations (Ring 3) that neither ontology nor docs capture → "Critical: regulatory requirement not tracked anywhere in your org"
+      - Gaps where the lakehouse data is silent but Work IQ docs or regulations have requirements → "Codify this into your lakehouse tables"
+      - Gaps where Work IQ docs discuss a requirement but it's not in the lakehouse tables AND not in regulations → "Verify if this is internal policy or regulatory"
+      - Requirements found only in regulations (Ring 3) that neither lakehouse data nor docs capture → "Critical: regulatory requirement not tracked anywhere in your org"
     - "Ring Availability" section listing which sources were consulted and which were unavailable
     - Summary: "X violations found against org standards, Y additional from business artifacts, Z additional from regulatory intelligence"
 
@@ -432,7 +411,7 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
 17. **End-to-end demo flow:**
     - Run `pii-sentry scan ./src/PiiSentry.DemoApp/ --ring all --output report.html`
     - Show concentric ring expansion of findings
-    - Highlight the reconciliation: "Your ontology says X, but your legal team discussed Y, and the actual regulation requires Z"
+    - Highlight the reconciliation: "Your lakehouse data says X, but your legal team discussed Y, and the actual regulation requires Z"
 
 18. **Documentation** (`/docs/`):
     - README: Problem → Solution, prerequisites, setup, deployment instructions (Terraform + portal steps + CLI install), architecture diagram
@@ -465,7 +444,7 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
 ## Relevant Files
 
 - `/src/PiiSentry.Cli/Program.cs` — CLI entry point, command parser, orchestrator
-- `/src/PiiSentry.Cli/Agents/FabricDataAgent.cs` — Ring 1: creates a thread on the pre-provisioned Foundry agent (by ID), queries ontology-backed data agent via `AIProjectClient`
+- `/src/PiiSentry.Cli/Agents/FabricDataAgent.cs` — Ring 1: creates a thread on the pre-provisioned Foundry agent (by ID), queries lakehouse-backed data agent via `AIProjectClient`
 - `/src/PiiSentry.Cli/Agents/WorkIqAgent.cs` — Ring 2: configures `McpLocalServerConfig` for Work IQ, parses MCP tool results into ring findings
 - `/src/PiiSentry.Cli/Agents/FoundryIqAgent.cs` — Ring 3: queries Foundry IQ knowledge base for regulatory intel
 - `/src/PiiSentry.Cli/Agents/ReconciliationAgent.cs` — Cross-ring analysis and gap reconciliation
@@ -474,8 +453,9 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
 - `/src/PiiSentry.DemoApp/` — Intentionally-violating demo ASP.NET Core app
 - `/infra/main.tf` — Root Terraform config (AzApi v2.8.0)
 - `/infra/modules/` — AI Search, AI Foundry, Storage, Observability (App Insights + Log Analytics), Fabric (capacity), Identity modules
-- `/demo-data/ontology/` — Ontology definition JSON + seed CSV data for lakehouse tables
-- `/demo-data/fabric-data-agent/` — Fabric Data Agent config (synced via Git integration): `data_agent.json`, `stage_config.json` (aiInstructions), `draft/ontology-PiiPhiCompliance/datasource.json`, `draft/ontology-PiiPhiCompliance/fewshots.json`
+- `/demo-data/lakehouse` — Seed CSV data for lakehouse tables
+- `/demo-fabric-artifacts/DA_PII_Sentry.DataAgent/` — Fabric Data Agent config (synced via Git integration): `data_agent.json`, `stage_config.json` (aiInstructions), `draft/lakehouse-tables-LH_PII_Sentry/datasource.json`
+- `/demo-fabric-artifacts/LH_PII_Sentry.Lakehouse/` — Fabric Lakehouse config (synced via Git integration): `lakehouse.metadata.json`, `alm.settings.json`
 - `/demo-data/docs/` — Word docs and meeting transcript content for Work IQ
 - `/demo-data/regulatory/` — Regulatory text PDFs for Foundry IQ vector store
 - `/.github/workflows/deploy.yml` — CI/CD with WIF auth (infra + Fabric ALM), build, test
@@ -507,9 +487,9 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
 ## Decisions
 
 - **Foundry resource model (not Hub-based):** The plan uses the **new Foundry resource** (`Microsoft.CognitiveServices/accounts`, kind: `AIServices`, `allowProjectManagement = true`) — not the legacy Hub-based model (`Microsoft.MachineLearningServices/workspaces`, kind: `Hub`). Hub-based projects are deprecated; new features (including GA Agent Service) only land on the Foundry resource type. Projects are child resources (`Microsoft.CognitiveServices/accounts/projects`). Connections are at the Foundry resource level (`Microsoft.CognitiveServices/accounts/connections`). No mandatory Key Vault or Storage Account — uses Microsoft-managed storage. Reference: `microsoft-foundry/foundry-samples/infrastructure/infrastructure-setup-terraform/00-basic`.
-- **Fabric IQ integration:** The Fabric Data Agent (ontology-backed) is **consumed via Foundry Agent Service** using a **pre-created Foundry agent**. The agent is created once at CI/CD time (post-provisioning script, step 8c) with `FabricTool` attached via a Foundry connection. Foundry agents are data-plane resources — they cannot be managed by Terraform. The CLI reads the agent ID from config (`FOUNDRY_FABRIC_AGENT_ID`), creates a disposable thread per scan, queries the ontology, and deletes the thread. All queries use OBO identity passthrough. There is no direct REST/MCP to the Fabric Data Agent.
+- **Fabric IQ integration:** The Fabric Data Agent (lakehouse-backed) is **consumed via Foundry Agent Service** using a **pre-created Foundry agent**. The agent is created once at CI/CD time (post-provisioning script, step 8c) with `FabricTool` attached via a Foundry connection. Foundry agents are data-plane resources — they cannot be managed by Terraform. The CLI reads the agent ID from config (`FOUNDRY_FABRIC_AGENT_ID`), creates a disposable thread per scan, queries the lakehouse data, and deletes the thread. All queries use OBO identity passthrough. There is no direct REST/MCP to the Fabric Data Agent.
 - **Single-project architecture:** There is one deployable artifact (`PiiSentry.Cli`). The Copilot SDK agent runs in-process (local reasoning). The Foundry agent is a remote resource (Ring 1 only). Work IQ is an SDK-managed native MCP server (via `McpLocalServerConfig`). Foundry IQ (AI Search) is a direct REST call. No separate hosted apps or sidecar services are needed.
-- **Fabric Data Agent source control:** Data agent config (ontology schema selection, AI instructions, few-shot examples) is versioned in Git via Fabric Git integration. The repo stores `datasource.json`, `fewshots.json`, and `stage_config.json` under the data agent folder. CI/CD SPN can sync Git → Fabric workspace and promote via deployment pipelines (dev → test → prod). SPN is **not** supported for data agent queries.
+- **Fabric Data Agent source control:** Data agent config (lakehouse table selection, AI instructions, few-shot examples) is versioned in Git via Fabric Git integration. The repo stores `datasource.json`, `fewshots.json`, and `stage_config.json` under the data agent folder. CI/CD SPN can sync Git → Fabric workspace and promote via deployment pipelines (dev → test → prod). SPN is **not** supported for data agent queries.
 - **Identity model:** All three IQ data-plane queries (Fabric Data Agent via Foundry, Work IQ, Foundry IQ) run under the **end user's identity** (OBO/delegated). The WIF service principal is used **only for CI/CD infrastructure provisioning and Fabric ALM operations** (git sync, deployment pipeline promotion). Users need at minimum `AI Developer` RBAC role in the Foundry project.
 - **.NET 10 + Copilot SDK + Agent Framework:** Use `GitHub.Copilot.SDK` (low-level) + `Microsoft.Agents.AI.GitHub.Copilot` (Agent Framework integration). The `CopilotClient` manages the Copilot CLI process lifecycle; the CLI creates an `AIAgent` (or `GitHubCopilotAgent`) with custom function tools (via `AIFunctionFactory.Create()`) and MCP servers (via `SessionConfig.McpServers`). This provides the consistent `AIAgent` abstraction, multi-turn `AgentSession`, streaming, and native MCP server management.
 - **AzApi v2.8.0:** Use azapi_resource for all Azure resources. Pin version explicitly. Note: the official Foundry Terraform samples use both AzApi and AzureRM providers; prefer AzApi for consistency.
@@ -519,7 +499,7 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
   - IN: CLI tool, three-ring analysis, demo app, infra, docs, presentation
   - OUT: Web UI, SaaS deployment, multi-tenant, real customer data
 - **Timeline simplification:** Pre-generate the M365 artifacts (Word docs, transcripts) manually rather than scripting their creation. Focus engineering effort on the CLI and ring integration.
-- **Fabric provisioning:** Fabric workspace, ontology, data agent, publishing, and Foundry connection are set up via portal (not Terraform-automatable). Terraform provisions Fabric capacity only. Data agent config is then synced to Git for version control. Prerequisites include: F2+ capacity, data agent tenant settings enabled, cross-geo AI processing/storing enabled, `AI Developer` role for Foundry users.
+- **Fabric provisioning:** Fabric workspace, lakehouse, data agent, publishing, and Foundry connection are set up via portal (not Terraform-automatable). Terraform provisions Fabric capacity only. Data agent config is then synced to Git for version control. Prerequisites include: F2+ capacity, data agent tenant settings enabled, cross-geo AI processing/storing enabled, `AI Developer` role for Foundry users.
 
 ## Further Considerations
 
@@ -529,11 +509,11 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
 
 3. **Scoring optimization for the challenge:**
    - Enterprise applicability (30 pts): PII/PHI compliance is a universal enterprise need. The concentric-ring approach is novel and reusable across industries.
-   - Azure integration (25 pts): AI Search, Microsoft Foundry (Agent Service on Foundry resource), Fabric IQ (ontology + data agent), Blob Storage, Entra ID, Application Insights, Log Analytics — deep Microsoft stack.
+   - Azure integration (25 pts): AI Search, Microsoft Foundry (Agent Service on Foundry resource), Fabric IQ (lakehouse + data agent), Blob Storage, Entra ID, Application Insights, Log Analytics — deep Microsoft stack.
    - Operational readiness (15 pts): Terraform IaC, WIF CI/CD, Fabric deployment pipelines (dev→test→prod), Application Insights telemetry (scan latency, ring metrics, errors), structured logging.
    - Security/RAI (15 pts): OBO identity passthrough on all rings, no PII stored, data minimization (NL queries only, no code exfiltrated), transparent source attribution, human-in-the-loop design, detailed RAI notes.
    - Storytelling (15 pts): "Your compliance posture has blind spots between what you've codified, what your teams know, and what regulations actually require. PII Sentry closes all three gaps in one scan."
-   - **Bonus: Work IQ / Fabric IQ / Foundry IQ (15 pts total):** All three IQ workloads used — Fabric Data Agent (ontology-backed via Foundry), Work IQ (MCP), Foundry IQ (Bing + vector search).
+   - **Bonus: Work IQ / Fabric IQ / Foundry IQ (15 pts total):** All three IQ workloads used — Fabric Data Agent (lakehouse-backed via Foundry), Work IQ (MCP), Foundry IQ (Bing + vector search).
    - **Bonus: Copilot SDK product feedback (10 pts):** File feedback + post screenshot in Teams channel.
    - **Bonus: Customer validation (10 pts):** Validate with internal compliance team or customer if feasible.
    - **Total addressable: 100 base + 35 bonus = 135 pts**
