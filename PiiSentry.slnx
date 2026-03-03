@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PiiSentry.Cli/PiiSentry.Cli.csproj" />
+    <Project Path="src/PiiSentry.Core/PiiSentry.Core.csproj" />
+    <Project Path="src/PiiSentry.DemoApp/PiiSentry.DemoApp.csproj" />
+  </Folder>
+</Solution>

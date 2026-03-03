@@ -1,0 +1,6 @@
+@PiiSentry.DemoApp_HostAddress = http://localhost:5230
+
+GET {{PiiSentry.DemoApp_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
