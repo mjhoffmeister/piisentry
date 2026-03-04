@@ -4,4 +4,6 @@ public sealed record ComplianceReport(
     string ScanPath,
     DateTimeOffset Timestamp,
     IReadOnlyList<Finding> Findings,
-    IReadOnlyList<RingAvailability> RingAvailability);
+    IReadOnlyList<RingAvailability> RingAvailability,
+    ReconciliationSummary Reconciliation,
+    ReportSummary Summary);

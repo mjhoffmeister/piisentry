@@ -69,10 +69,12 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
 4. Create `mcp.json`:
    ```json
    {
-     "workiq": {
-       "command": "npx",
-       "args": ["-y", "@microsoft/workiq", "mcp"],
-       "tools": ["*"]
+     "servers": {
+       "workiq": {
+         "command": "npx",
+         "args": ["-y", "@microsoft/workiq", "mcp"],
+         "tools": ["*"]
+       }
      }
    }
    ```

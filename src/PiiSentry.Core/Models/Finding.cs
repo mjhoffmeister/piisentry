@@ -5,6 +5,8 @@ public sealed record Finding(
     Ring Ring,
     Severity Severity,
     string File,
+    string LineRange,
+    string ViolationType,
     string Description,
     string Requirement,
     string Citation,
