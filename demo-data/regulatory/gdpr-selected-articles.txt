@@ -1,0 +1,50 @@
+GDPR - Selected Articles and Recital (Summary)
+
+Purpose:
+This summary highlights selected GDPR requirements commonly referenced in PII/PHI handling reviews.
+
+Selected provisions:
+- Article 5: Principles relating to processing of personal data
+- Article 6: Lawfulness of processing
+- Article 9: Special categories of personal data
+- Article 15: Right of access
+- Article 17: Right to erasure
+- Article 25: Data protection by design and by default
+- Article 32: Security of processing
+- Article 35: Data protection impact assessment (DPIA)
+- Recital 71: Automated decision-making and profiling considerations
+
+Article 5 (Principles):
+- Personal data must be processed lawfully, fairly, and transparently.
+- Collection should be purpose-limited and data-minimized.
+- Data should be accurate, retained no longer than necessary, and protected with integrity/confidentiality controls.
+
+Article 6 (Lawfulness):
+- Processing requires a valid lawful basis (for example, consent, contract, legal obligation, vital interests, public task, or legitimate interests where applicable).
+
+Article 9 (Special categories):
+- Processing special categories (including many health, genetic, and biometric contexts) is prohibited unless specific conditions and safeguards are met.
+
+Article 15 (Access right):
+- Data subjects can request confirmation, access, and information about processing activities.
+
+Article 17 (Erasure right):
+- Data subjects can request deletion in qualifying circumstances, subject to legal exceptions.
+
+Article 25 (By design/default):
+- Controllers must implement privacy safeguards in system design and default settings.
+
+Article 32 (Security):
+- Appropriate technical and organizational measures are required, including controls such as encryption, confidentiality, resilience, and restoration processes.
+
+Article 35 (DPIA) - key gap indicator:
+- Where processing is likely to result in high risk to rights and freedoms, controllers must perform a Data Protection Impact Assessment before processing.
+- High-risk profiling, large-scale sensitive processing, and novel technology use can trigger DPIA obligations.
+
+Recital 71 (Profiling context):
+- Safeguards are expected in automated decision-making scenarios, including meaningful protections for data subjects.
+
+Compliance implication for code review:
+- Systems with high-risk profiling should demonstrate DPIA evidence.
+- APIs should support data subject access and deletion workflows.
+- Sensitive data processing must show lawful basis and strong security controls.

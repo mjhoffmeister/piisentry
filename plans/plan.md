@@ -173,8 +173,8 @@ There is **one deployable artifact**: `PiiSentry.Cli` (a `dotnet tool` global to
       - Missing: No requirement for DPIA (Foundry IQ gap), no consent flow requirement for biometric (Work IQ gap)
 
     - `compliance_controls.csv` — Columns: `ControlId, RequirementId, ControlType, Description, VerificationMethod` (identity key: `ControlId`)
-    - `application_systems.csv` — Columns: `SystemId, Name, DataCategories, DataFlows, Owner` (identity key: `SystemId`)
-    - `data_flows.csv` — Columns: `FlowId, SourceSystem, DestSystem, DataCategories, EncryptionInTransit, Protocol` (identity key: `FlowId`)
+    - `application_systems.csv` — Columns: `SystemId, Name, CategoryId, CategoryType, FlowId, Owner` (identity key: `SystemId`)
+    - `data_flows.csv` — Columns: `FlowId, SourceSystem, DestSystem, CategoryId, CategoryType, EncryptionInTransit, Protocol` (identity key: `FlowId`)
 
 8. Configure Fabric Data Agent:
    - Create a **Fabric Data Agent** with the Lakehouse tables as its source — this is the only supported query path for Ring 1

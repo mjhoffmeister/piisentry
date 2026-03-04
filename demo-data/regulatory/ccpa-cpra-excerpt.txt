@@ -1,0 +1,32 @@
+CCPA and CPRA - Selected Provisions (Summary)
+
+Purpose:
+This summary captures selected California privacy requirements relevant to application compliance checks.
+
+Selected provisions:
+- CCPA 1798.100: Right to know categories and purposes of collected personal information
+- CCPA 1798.105: Right to delete personal information (subject to exceptions)
+- CCPA 1798.140: Definitions, including broad personal information scope
+- CPRA amendments: Sensitive personal information handling and purpose limitation
+
+1798.100 (Right to know):
+- Consumers are entitled to know what categories of personal information are collected and for what purposes.
+- Businesses should be able to disclose category-level collection and use practices.
+
+1798.105 (Right to delete):
+- Consumers can request deletion of personal information collected from them, with statutory exceptions.
+- Organizations need operational workflows to intake, verify, and fulfill deletion requests.
+
+1798.140 (Definition scope):
+- Personal information is broadly defined and can include identifiers, inferences, and other linked data.
+- Biometric and genetic-related contexts can fall within sensitive handling expectations depending on use.
+
+CPRA-sensitive personal information focus:
+- Sensitive personal information requires additional purpose limitation and use governance.
+- Retention and use should be limited to disclosed and compatible purposes.
+- Consumer-facing notices and internal controls should reflect actual processing behavior.
+
+Compliance implication for code review:
+- Applications should expose mechanisms to support right-to-know and deletion request fulfillment.
+- Data inventories and API contracts should align with disclosed categories and purposes.
+- Sensitive data handling should be auditable and constrained by purpose.

@@ -1,0 +1,52 @@
+HIPAA Privacy and Security Rule - Selected Excerpts (Summary)
+
+Purpose:
+This file provides a concise, plain-language summary of selected HIPAA sections used for retrieval grounding in compliance demos.
+
+Section focus:
+- 45 CFR 164.502: Uses and disclosures of protected health information
+- 45 CFR 164.514: De-identification and re-identification
+- 45 CFR 164.312: Technical safeguards
+
+164.502 (Uses and disclosures):
+- Covered entities and business associates may use or disclose PHI only as permitted or required by the rule.
+- Uses beyond treatment, payment, and health care operations generally require authorization unless an exception applies.
+- Minimum necessary principles apply in many routine disclosure contexts.
+
+164.514 (De-identification):
+- Information is not individually identifiable when it has been de-identified according to recognized methods.
+- Two common methods are used in practice:
+  1) Expert determination
+  2) Safe Harbor removal of specified identifiers
+- If de-identification is reversed or linkable keys are mishandled, compliance risk increases.
+
+Safe Harbor identifier set (18 categories):
+1. Names
+2. Geographic subdivisions smaller than a state (with limited exceptions)
+3. All elements of dates (except year) directly related to an individual
+4. Telephone numbers
+5. Fax numbers
+6. Email addresses
+7. Social Security numbers
+8. Medical record numbers
+9. Health plan beneficiary numbers
+10. Account numbers
+11. Certificate or license numbers
+12. Vehicle identifiers and serial numbers, including license plates
+13. Device identifiers and serial numbers
+14. Web URLs
+15. Internet protocol (IP) addresses
+16. Biometric identifiers, including fingerprints and voiceprints
+17. Full-face photos and comparable images
+18. Any other unique identifying number, characteristic, or code
+
+164.312 (Technical safeguards):
+- Access control: implement unique user identification and controlled access paths.
+- Audit controls: implement hardware/software mechanisms to record and examine system activity.
+- Integrity controls: protect PHI from improper alteration or destruction.
+- Person/entity authentication: verify users and systems accessing PHI.
+- Transmission security: guard against unauthorized PHI access during network transmission.
+
+Compliance implication for code review:
+- Systems handling PHI should enforce authentication, authorization, encryption in transit, and robust auditing.
+- Logging and telemetry pipelines must avoid exposing direct identifiers.

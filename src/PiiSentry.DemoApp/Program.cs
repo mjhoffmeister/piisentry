@@ -12,7 +12,7 @@ app.MapGet("/health", () => Results.Ok(new
 {
     service = "PiiSentry.DemoApp",
     status = "ok",
-    phase = "phase0"
+    phase = "phase2"
 }));
 
 app.Run();

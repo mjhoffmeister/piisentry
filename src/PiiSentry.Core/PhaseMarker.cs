@@ -2,5 +2,5 @@ namespace PiiSentry.Core;
 
 public static class PhaseMarker
 {
-    public const string Value = "phase0";
+    public const string Value = "phase2";
 }
