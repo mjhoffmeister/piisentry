@@ -47,6 +47,18 @@ variable "fabric_connection_target" {
   default     = ""
 }
 
+variable "fabric_workspace_id" {
+  type        = string
+  description = "Fabric workspace ID used for Microsoft Fabric connection custom keys."
+  default     = ""
+}
+
+variable "fabric_data_agent_id" {
+  type        = string
+  description = "Fabric data agent artifact ID used for Microsoft Fabric connection custom keys."
+  default     = ""
+}
+
 variable "create_embedding_deployment" {
   type        = bool
   description = "Whether to deploy an embedding model in the Foundry account."

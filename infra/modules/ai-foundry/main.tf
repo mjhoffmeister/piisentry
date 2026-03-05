@@ -62,9 +62,18 @@ resource "azapi_resource" "fabric_connection" {
 
   body = {
     properties = {
-      category      = "Fabric"
-      target        = var.fabric_connection_target
-      authType      = "AAD"
+      category = "CustomKeys"
+      authType = "CustomKeys"
+      target   = var.fabric_connection_target
+      credentials = {
+        keys = {
+          "workspace-id" = var.fabric_workspace_id
+          "artifact-id"  = var.fabric_data_agent_id
+        }
+      }
+      metadata = {
+        type = "fabric_data_agent"
+      }
       isSharedToAll = true
     }
   }

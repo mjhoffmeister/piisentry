@@ -53,3 +53,23 @@ output "user_assigned_identity_id" {
   value       = module.identity.user_assigned_identity_id
   description = "User-assigned managed identity resource ID."
 }
+
+output "fabric_workspace_id" {
+  value       = module.fabric.fabric_workspace_id
+  description = "Fabric workspace ID when created."
+}
+
+output "fabric_workspace_name" {
+  value       = module.fabric.fabric_workspace_name
+  description = "Fabric workspace display name when created."
+}
+
+output "fabric_lakehouse_id" {
+  value       = module.fabric.fabric_lakehouse_id
+  description = "Fabric lakehouse ID when created."
+}
+
+output "fabric_lakehouse_name" {
+  value       = module.fabric.fabric_lakehouse_name
+  description = "Fabric lakehouse display name when created."
+}

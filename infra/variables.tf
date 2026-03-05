@@ -22,6 +22,90 @@ variable "create_fabric_capacity" {
   default     = false
 }
 
+variable "create_fabric_workspace" {
+  type        = bool
+  description = "Whether to create a Fabric workspace on the configured capacity."
+  default     = false
+}
+
+variable "fabric_workspace_display_name" {
+  type        = string
+  description = "Display name for the Fabric workspace."
+  default     = "WS_PII_Sentry"
+}
+
+variable "create_fabric_lakehouse" {
+  type        = bool
+  description = "Whether to create a Fabric lakehouse in the workspace."
+  default     = true
+}
+
+variable "fabric_lakehouse_display_name" {
+  type        = string
+  description = "Display name for the Fabric lakehouse."
+  default     = "LH_PII_Sentry"
+}
+
+variable "create_fabric_workspace_git" {
+  type        = bool
+  description = "Whether to enable Fabric workspace Git integration (GitHub configured connection)."
+  default     = false
+}
+
+variable "fabric_workspace_git_repository_owner" {
+  type        = string
+  description = "GitHub owner/org for Fabric workspace Git integration."
+  default     = ""
+}
+
+variable "fabric_workspace_git_repository_name" {
+  type        = string
+  description = "GitHub repository name for Fabric workspace Git integration."
+  default     = ""
+}
+
+variable "fabric_workspace_git_branch_name" {
+  type        = string
+  description = "Git branch for Fabric workspace Git integration."
+  default     = "main"
+}
+
+variable "fabric_workspace_git_directory_name" {
+  type        = string
+  description = "Directory in the Git repository that contains Fabric artifacts. Must start with '/'."
+  default     = "/demo-fabric-artifacts"
+}
+
+variable "fabric_workspace_git_connection_id" {
+  type        = string
+  description = "Fabric GitHub connection ID used when workspace Git integration is enabled."
+  default     = ""
+}
+
+variable "fabric_workspace_git_initialization_strategy" {
+  type        = string
+  description = "Workspace Git initialization strategy."
+  default     = "PreferWorkspace"
+}
+
+variable "fabric_capacity_name_override" {
+  type        = string
+  description = "Override the auto-generated Fabric capacity name."
+  default     = ""
+}
+
+variable "fabric_capacity_location" {
+  type        = string
+  description = "Override the region for Fabric capacity when quota is unavailable in the default region."
+  default     = ""
+}
+
+variable "fabric_location" {
+  type        = string
+  description = "Azure region for Fabric capacity. Defaults to the main location."
+  default     = ""
+}
+
 variable "search_sku" {
   type        = string
   description = "Azure AI Search SKU."
@@ -67,6 +151,18 @@ variable "create_fabric_connection" {
 variable "fabric_connection_target" {
   type        = string
   description = "Fabric connection target identifier used by the Foundry connection resource."
+  default     = ""
+}
+
+variable "fabric_workspace_id" {
+  type        = string
+  description = "Fabric workspace ID used for Microsoft Fabric connection custom keys."
+  default     = ""
+}
+
+variable "fabric_data_agent_id" {
+  type        = string
+  description = "Fabric Data Agent artifact ID used for Microsoft Fabric connection custom keys."
   default     = ""
 }
 

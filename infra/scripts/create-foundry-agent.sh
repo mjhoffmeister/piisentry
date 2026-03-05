@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if command -v jq >/dev/null 2>&1; then
+	JQ_BIN="jq"
+elif command -v jq.exe >/dev/null 2>&1; then
+	JQ_BIN="jq.exe"
+else
+	echo "jq (or jq.exe) is required for Foundry agent provisioning."
+	exit 1
+fi
+
 if [[ -z "${FOUNDRY_PROJECT_ENDPOINT:-}" ]]; then
 	echo "FOUNDRY_PROJECT_ENDPOINT is not set; skipping Foundry agent provisioning."
 	exit 0
@@ -16,13 +25,24 @@ agent_model="${FOUNDRY_AGENT_MODEL:-gpt-4o}"
 api_version="2025-05-15-preview"
 assistants_url="${FOUNDRY_PROJECT_ENDPOINT%/}/assistants?api-version=${api_version}"
 
-token="$(az account get-access-token --resource https://cognitiveservices.azure.com --query accessToken -o tsv)"
+token="$(az account get-access-token --scope https://ai.azure.com/.default --query accessToken -o tsv 2>/dev/null || true)"
+token="${token%$'\r'}"
+
+if [[ -z "$token" ]]; then
+	token="$(az account get-access-token --resource https://cognitiveservices.azure.com --query accessToken -o tsv 2>/dev/null || true)"
+	token="${token%$'\r'}"
+fi
+
+if [[ -z "$token" ]]; then
+	echo "Failed to acquire an access token for Foundry agent provisioning."
+	exit 1
+fi
 
 existing_agent_id="$(
 	curl -fsSL -X GET "$assistants_url" \
 		-H "Authorization: Bearer ${token}" \
 		-H "Content-Type: application/json" \
-	| jq -r --arg n "$agent_name" '.data[]? | select(.name == $n) | .id' \
+	| "$JQ_BIN" -r --arg n "$agent_name" '.data[]? | select(.name == $n) | .id' \
 	| head -n 1
 )"
 
@@ -37,7 +57,7 @@ if [[ -n "$existing_agent_id" ]]; then
 	exit 0
 fi
 
-create_body="$(jq -n \
+create_body="$("$JQ_BIN" -n \
 	--arg name "$agent_name" \
 	--arg model "$agent_model" \
 	--arg cid "$FABRIC_CONNECTION_ID" \
@@ -47,9 +67,13 @@ create_body="$(jq -n \
 		instructions: "You are a compliance knowledge base. Answer questions about PII/PHI handling standards.",
 		tools: [
 			{
-				type: "fabric",
-				fabric: {
-					connection_id: $cid
+				type: "fabric_dataagent",
+				fabric_dataagent: {
+					connections: [
+						{
+							connection_id: $cid
+						}
+					]
 				}
 			}
 		]
@@ -61,7 +85,7 @@ created_agent_id="$(
 		-H "Authorization: Bearer ${token}" \
 		-H "Content-Type: application/json" \
 		-d "$create_body" \
-	| jq -r '.id'
+	| "$JQ_BIN" -r '.id'
 )"
 
 if [[ -z "$created_agent_id" || "$created_agent_id" == "null" ]]; then
