@@ -5,7 +5,8 @@ using PiiSentry.Core.Models;
 namespace PiiSentry.Cli.Agents;
 
 /// <summary>
-/// Parses the Copilot agent’s JSON response into a structured <see cref="ComplianceReport"/>.
+/// Parses the Copilot agent’s JSON response into a structured
+/// <see cref="ComplianceReport"/>.
 /// </summary>
 internal static class AgentResponseParser
 {
@@ -50,6 +51,9 @@ internal static class AgentResponseParser
         }
     }
 
+    /// <summary>
+    /// Extracts the outermost JSON object from the agent's free-text response.
+    /// </summary>
     private static string? ExtractJson(string text)
     {
         // Find the outermost JSON object in the agent's response
@@ -71,6 +75,9 @@ internal static class AgentResponseParser
         return null;
     }
 
+    /// <summary>
+    /// Deserializes the "findings" array from the parsed JSON into Finding records.
+    /// </summary>
     private static List<Finding> ParseFindings(JsonElement root)
     {
         List<Finding> findings = [];
@@ -99,6 +106,9 @@ internal static class AgentResponseParser
         return findings;
     }
 
+    /// <summary>
+    /// Deserializes the "reconciliation" object from the parsed JSON.
+    /// </summary>
     private static ReconciliationSummary? ParseReconciliation(JsonElement root)
     {
         if (!root.TryGetProperty("reconciliation", out var recon))
@@ -112,6 +122,9 @@ internal static class AgentResponseParser
             RegulatoryDelta: GetStringArray(recon, "regulatoryDelta"));
     }
 
+    /// <summary>
+    /// Produces a single-finding report containing the raw agent text when JSON parsing fails.
+    /// </summary>
     private static ComplianceReport FallbackReport(
         string rawText,
         string scanPath,
@@ -135,6 +148,9 @@ internal static class AgentResponseParser
             ringAvailability);
     }
 
+    /// <summary>
+    /// Reads a string property from a JSON element, returning null if absent.
+    /// </summary>
     private static string? GetString(JsonElement element, string property)
     {
         return element.TryGetProperty(property, out var val)
@@ -142,6 +158,9 @@ internal static class AgentResponseParser
             : null;
     }
 
+    /// <summary>
+    /// Parses a string value into an enum, returning the default value on failure.
+    /// </summary>
     private static T ParseEnum<T>(string? value) where T : struct, Enum
     {
         if (value is not null && Enum.TryParse<T>(value, ignoreCase: true, out var result))
@@ -152,6 +171,9 @@ internal static class AgentResponseParser
         return default;
     }
 
+    /// <summary>
+    /// Reads a JSON array property as a string array, filtering out empty entries.
+    /// </summary>
     private static string[] GetStringArray(JsonElement element, string property)
     {
         if (!element.TryGetProperty(property, out var arr)
