@@ -6,6 +6,7 @@
 infra/.terraform/
 *.tfstate
 *.tfstate.*
+tfplan*
 crash.log
 
 # IDE
