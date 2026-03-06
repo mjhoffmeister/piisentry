@@ -3,6 +3,9 @@ using Azure.Identity;
 
 namespace PiiSentry.Cli.Auth;
 
+/// <summary>
+/// Provides Azure credential management with interactive browser login and token cache pre-warming.
+/// </summary>
 internal static class AuthProvider
 {
     private static TokenCredential? _credential;
@@ -54,21 +57,31 @@ internal static class AuthProvider
         return identity ?? "authenticated";
     }
 
+    /// <summary>
+    /// Extracts the UPN or OID from a JWT access token payload.
+    /// </summary>
     private static string ExtractIdentity(string jwt)
     {
-        var parts = jwt.Split('.');
+        string[] parts = jwt.Split('.');
         if (parts.Length < 2)
             return "authenticated";
 
-        var payload = parts[1];
-        payload = payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '=');
-        var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(payload));
-        using var doc = System.Text.Json.JsonDocument.Parse(json);
-        var root = doc.RootElement;
+        try
+        {
+            string payload = parts[1];
+            payload = payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '=');
+            string json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(payload));
+            using System.Text.Json.JsonDocument doc = System.Text.Json.JsonDocument.Parse(json);
+            System.Text.Json.JsonElement root = doc.RootElement;
 
-        var upn = root.TryGetProperty("upn", out var u) ? u.GetString() : null;
-        var oid = root.TryGetProperty("oid", out var o) ? o.GetString() : null;
+            string? upn = root.TryGetProperty("upn", out var u) ? u.GetString() : null;
+            string? oid = root.TryGetProperty("oid", out var o) ? o.GetString() : null;
 
-        return upn ?? oid ?? "authenticated";
+            return upn ?? oid ?? "authenticated";
+        }
+        catch
+        {
+            return "authenticated";
+        }
     }
 }

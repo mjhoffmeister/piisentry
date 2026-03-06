@@ -6,8 +6,14 @@ using PiiSentry.Core.Models;
 
 namespace PiiSentry.Core.Reports;
 
+/// <summary>
+/// Generates compliance reports in JSON, HTML, and Markdown formats.
+/// </summary>
 public static class ReportGenerator
 {
+    /// <summary>
+    /// Serializes a compliance report to indented JSON.
+    /// </summary>
     public static string ToJson(ComplianceReport report)
     {
         return JsonSerializer.Serialize(report, new JsonSerializerOptions
@@ -17,30 +23,33 @@ public static class ReportGenerator
         });
     }
 
+    /// <summary>
+    /// Renders a compliance report as a self-contained HTML page with concentric-ring visualization.
+    /// </summary>
     public static string ToHtml(ComplianceReport report)
     {
-        var byRingRows = string.Join(
+        string byRingRows = string.Join(
                 "",
                 report.Summary.ByRing
                         .OrderBy(kvp => kvp.Key)
                         .Select(kvp => $"<tr><td>{Encode(kvp.Key.ToString())}</td><td>{kvp.Value}</td></tr>"));
 
-        var bySeverityRows = string.Join(
+        string bySeverityRows = string.Join(
                 "",
                 report.Summary.BySeverity
                         .OrderBy(kvp => kvp.Key)
                         .Select(kvp => $"<tr><td>{Encode(kvp.Key.ToString())}</td><td>{kvp.Value}</td></tr>"));
 
-        var availabilityRows = string.Join(
+        string availabilityRows = string.Join(
                 "",
                 report.RingAvailability.Select(r =>
                         $"<tr><td>{Encode(r.Ring.ToString())}</td><td>{(r.Available ? "Available" : "Unavailable")}</td><td>{Encode(r.Message)}</td></tr>"));
 
-        var findingCards = report.Findings.Count == 0
+        string findingCards = report.Findings.Count == 0
                 ? "<p class=\"empty\">No findings were produced for the selected rings.</p>"
                 : string.Join("", report.Findings.Select(BuildFindingCard));
 
-        var template = new StringBuilder(
+        StringBuilder template = new(
                 """
                         <!doctype html>
                         <html lang="en">
@@ -154,6 +163,9 @@ public static class ReportGenerator
                 .ToString();
     }
 
+    /// <summary>
+    /// Renders a single finding as an HTML card with severity badge and details.
+    /// </summary>
     private static string BuildFindingCard(Finding finding)
     {
         return $"""
@@ -174,11 +186,22 @@ public static class ReportGenerator
                              """;
     }
 
+    /// <summary>
+    /// HTML-encodes a string value for safe embedding in report markup.
+    /// </summary>
     private static string Encode(string value) => WebUtility.HtmlEncode(value ?? string.Empty);
 
+    /// <summary>
+    /// Escapes pipe characters in Markdown content to prevent table formatting breaks.
+    /// </summary>
+    private static string EscapeMarkdown(string value) => (value ?? string.Empty).Replace("|", "\\|");
+
+    /// <summary>
+    /// Renders a compliance report as Markdown with findings and a file-grouped remediation plan.
+    /// </summary>
     public static string ToMarkdown(ComplianceReport report)
     {
-        var sb = new StringBuilder();
+        StringBuilder sb = new();
 
         sb.AppendLine("# PII Sentry Compliance Report");
         sb.AppendLine();
@@ -192,10 +215,10 @@ public static class ReportGenerator
         sb.AppendLine();
         sb.AppendLine("| Ring | Status | Notes |");
         sb.AppendLine("|------|--------|-------|");
-        foreach (var r in report.RingAvailability)
+        foreach (RingAvailability r in report.RingAvailability)
         {
-            var icon = r.Available ? "Operational" : "Unavailable";
-            sb.AppendLine($"| {r.Ring} | {icon} | {r.Message} |");
+            string icon = r.Available ? "Operational" : "Unavailable";
+            sb.AppendLine($"| {r.Ring} | {icon} | {EscapeMarkdown(r.Message)} |");
         }
         sb.AppendLine();
 
@@ -217,16 +240,16 @@ public static class ReportGenerator
         sb.AppendLine("## Findings");
         sb.AppendLine();
 
-        foreach (var f in report.Findings)
+        foreach (Finding f in report.Findings)
         {
-            sb.AppendLine($"### {f.Id}: {f.ViolationType}");
+            sb.AppendLine($"### {EscapeMarkdown(f.Id)}: {EscapeMarkdown(f.ViolationType)}");
             sb.AppendLine();
             sb.AppendLine($"| | |");
             sb.AppendLine($"|---|---|");
             sb.AppendLine($"| **Ring** | {f.Ring} |");
             sb.AppendLine($"| **Severity** | {f.Severity} |");
-            sb.AppendLine($"| **File** | `{f.File}` |");
-            sb.AppendLine($"| **Lines** | {f.LineRange} |");
+            sb.AppendLine($"| **File** | `{EscapeMarkdown(f.File)}` |");
+            sb.AppendLine($"| **Lines** | {EscapeMarkdown(f.LineRange)} |");
             sb.AppendLine();
             sb.AppendLine($"**Description:** {f.Description}");
             sb.AppendLine();

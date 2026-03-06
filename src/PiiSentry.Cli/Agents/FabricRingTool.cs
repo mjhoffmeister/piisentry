@@ -6,8 +6,14 @@ using PiiSentry.Cli.Auth;
 
 namespace PiiSentry.Cli.Agents;
 
+/// <summary>
+/// Ring 1 tool — queries the Fabric Data Agent for codified PII/PHI organizational standards.
+/// </summary>
 internal static class FabricRingTool
 {
+    /// <summary>
+    /// Creates an <see cref="AIFunction"/> that queries the pre-provisioned Foundry agent with a disposable thread.
+    /// </summary>
     public static AIFunction Create(AgentRuntimeConfig config)
     {
         return AIFunctionFactory.Create(

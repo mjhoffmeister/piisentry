@@ -1,7 +1,13 @@
 namespace PiiSentry.Cli.Prompts;
 
+/// <summary>
+/// Builds the runtime system prompt that defines PII Sentry’s persona, workflow, and output schema.
+/// </summary>
 public static class SystemPrompt
 {
+    /// <summary>
+    /// Constructs the system prompt with the target scan path interpolated.
+    /// </summary>
     public static string Build(string scanPath) =>
         $$"""
         <persona>
@@ -51,12 +57,11 @@ public static class SystemPrompt
         2. Identify code patterns that handle PII/PHI (e.g., personal data fields, SSNs, emails,
            health records, biometric data, database queries with PII, logging of sensitive data,
            API endpoints exposing PII, missing encryption, missing access controls).
-        3. Query ALL available ring tools IN PARALLEL in a SINGLE turn, using ONE comprehensive
-           query per ring that covers all PII/PHI categories at once. Do NOT make multiple
-           separate calls to the same ring tool. Example queries:
-           a. Ring 1: "What are the organization's complete PII/PHI data handling requirements,
-              encryption mandates, access control policies, audit logging requirements, data
-              classification rules, consent requirements, and retention policies?"
+        3. Query the available ring tools. Call Ring 2 and Ring 3 in parallel with one broad query
+           each. For Ring 1 (query_fabric_data_agent), use a SHORT, SPECIFIC question — the Fabric
+           Data Agent works best with focused queries against its lakehouse tables. Examples:
+           a. Ring 1 (call ONCE with a focused query): "What are our PII and PHI data categories,
+              data handling requirements, and compliance controls?"
            b. Ring 2: "What recent decisions, policies, guidelines, or discussions exist about
               PII/PHI handling, data classification, encryption, access controls, biometric data,
               genetic data, audit logging, and consent requirements?"

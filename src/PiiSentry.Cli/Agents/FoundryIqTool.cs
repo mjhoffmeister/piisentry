@@ -8,10 +8,16 @@ using PiiSentry.Cli.Auth;
 
 namespace PiiSentry.Cli.Agents;
 
+/// <summary>
+/// Ring 3 tool — queries the Foundry IQ knowledge base via Azure AI Search agentic retrieval.
+/// </summary>
 internal static class FoundryIqTool
 {
-    private static readonly HttpClient Http = new();
+    private static readonly HttpClient HttpClient = new();
 
+    /// <summary>
+    /// Creates an <see cref="AIFunction"/> that queries the agentic retrieval endpoint for regulatory intelligence.
+    /// </summary>
     public static AIFunction Create(AgentRuntimeConfig config)
     {
         return AIFunctionFactory.Create(
@@ -24,10 +30,10 @@ internal static class FoundryIqTool
 
                 try
                 {
-                    var token = await AuthProvider.GetCredential()
+                    AccessToken token = await AuthProvider.GetCredential()
                         .GetTokenAsync(new TokenRequestContext(["https://search.azure.com/.default"]), CancellationToken.None);
 
-                    var url = $"{config.AiSearchEndpoint.TrimEnd('/')}/knowledgebases/{config.AiSearchKnowledgeBase}/retrieve?api-version=2025-11-01-preview";
+                    string url = $"{config.AiSearchEndpoint.TrimEnd('/')}/knowledgebases/{config.AiSearchKnowledgeBase}/retrieve?api-version=2025-11-01-preview";
 
                     var requestBody = new
                     {
@@ -38,7 +44,7 @@ internal static class FoundryIqTool
                         retrievalReasoningEffort = new { kind = "medium" }
                     };
 
-                    var request = new HttpRequestMessage(HttpMethod.Post, url)
+                    HttpRequestMessage request = new(HttpMethod.Post, url)
                     {
                         Content = new StringContent(
                             JsonSerializer.Serialize(requestBody),
@@ -66,7 +72,7 @@ internal static class FoundryIqTool
                             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token.Token);
                         }
 
-                        response = await Http.SendAsync(request);
+                        response = await HttpClient.SendAsync(request);
                         json = await response.Content.ReadAsStringAsync();
 
                         if ((int)response.StatusCode != 429)
@@ -88,7 +94,7 @@ internal static class FoundryIqTool
                     using var doc = JsonDocument.Parse(json);
                     var root = doc.RootElement;
 
-                    var results = new List<string>();
+                    List<string> results = [];
 
                     if (root.TryGetProperty("response", out var responseElem)
                         && responseElem.ValueKind == JsonValueKind.Array)

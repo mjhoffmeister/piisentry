@@ -7,8 +7,13 @@ using PiiSentry.Core.Models;
 
 namespace PiiSentry.Cli.Agents;
 
+/// <summary>
+/// Orchestrates a PII/PHI compliance scan using the Copilot SDK with concentric-ring intelligence tools.
+/// </summary>
 internal sealed class ScanOrchestrator
 {
+    private const string DefaultModel = "gpt-5.3-codex";
+
     private readonly AgentRuntimeConfig _config;
     private readonly ScanTelemetry _telemetry;
 
@@ -18,7 +23,11 @@ internal sealed class ScanOrchestrator
         _telemetry = telemetry;
     }
 
-    public async Task<ComplianceReport> ScanAsync(
+    /// <summary>
+    /// Runs a compliance scan against the target path using the selected intelligence rings.
+    /// Returns the report and the elapsed scan duration.
+    /// </summary>
+    public async Task<(ComplianceReport Report, TimeSpan Elapsed)> ScanAsync(
         string scanPath,
         IReadOnlyList<Ring> selectedRings,
         CancellationToken cancellationToken)
@@ -26,19 +35,22 @@ internal sealed class ScanOrchestrator
         _telemetry.TrackScanStarted(scanPath, selectedRings);
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
-        var ringAvailability = BuildRingAvailability(selectedRings);
-        var tools = BuildTools(selectedRings);
-        var mcpServers = BuildMcpServers(selectedRings);
+        ConsoleUI.PrintPhase("Preparing scan...");
+
+        List<RingAvailability> ringAvailability = BuildRingAvailability(selectedRings);
+        List<AIFunction> tools = BuildTools(selectedRings);
+        Dictionary<string, object> mcpServers = BuildMcpServers(selectedRings);
 
         await using var client = new CopilotClient(new CopilotClientOptions
         {
             Cwd = Path.GetFullPath(scanPath)
         });
+        
         await client.StartAsync();
 
-        var sessionConfig = new SessionConfig
+        SessionConfig sessionConfig = new()
         {
-            Model = "gpt-5",
+            Model = DefaultModel,
             Tools = tools,
             OnPermissionRequest = PermissionHandler.ApproveAll,
             SystemMessage = new SystemMessageConfig
@@ -50,7 +62,7 @@ internal sealed class ScanOrchestrator
             {
                 OnPreToolUse = async (input, _) =>
                 {
-                    Console.WriteLine($"  [tool] {input.ToolName}");
+                    ConsoleUI.PrintToolCall(input.ToolName);
                     return new PreToolUseHookOutput
                     {
                         PermissionDecision = "allow"
@@ -64,8 +76,10 @@ internal sealed class ScanOrchestrator
 
         await using var session = await client.CreateSessionAsync(sessionConfig);
 
-        var responseBuilder = new StringBuilder();
-        var done = new TaskCompletionSource();
+        ConsoleUI.PrintPhase("Scanning source files and querying rings...");
+
+        StringBuilder responseBuilder = new();
+        TaskCompletionSource done = new();
 
         using var registration = cancellationToken.Register(() => done.TrySetCanceled());
 
@@ -94,18 +108,23 @@ internal sealed class ScanOrchestrator
         await session.SendAsync(new MessageOptions { Prompt = prompt });
         await done.Task;
 
-        var agentResponse = responseBuilder.ToString();
-        var report = AgentResponseParser.Parse(agentResponse, scanPath, ringAvailability);
+        ConsoleUI.PrintPhase("Generating report...");
+
+        string agentResponse = responseBuilder.ToString();
+        ComplianceReport report = AgentResponseParser.Parse(agentResponse, scanPath, ringAvailability);
 
         sw.Stop();
         _telemetry.TrackScanCompleted(sw.Elapsed, report.Summary.TotalFindings);
 
-        return report;
+        return (report, sw.Elapsed);
     }
 
+    /// <summary>
+    /// Builds the custom AIFunction tools for the selected rings (Fabric, Foundry).
+    /// </summary>
     private List<AIFunction> BuildTools(IReadOnlyList<Ring> selectedRings)
     {
-        var tools = new List<AIFunction>();
+        List<AIFunction> tools = [];
 
         foreach (var ring in selectedRings)
         {
@@ -124,14 +143,17 @@ internal sealed class ScanOrchestrator
         return tools;
     }
 
+    /// <summary>
+    /// Configures Work IQ as an MCP server when Ring 2 is selected.
+    /// </summary>
     private Dictionary<string, object> BuildMcpServers(IReadOnlyList<Ring> selectedRings)
     {
-        var servers = new Dictionary<string, object>();
+        Dictionary<string, object> servers = new();
 
         if (!selectedRings.Contains(Ring.WorkIq))
             return servers;
 
-        var env = new Dictionary<string, string>();
+        Dictionary<string, string> env = new();
         if (!string.IsNullOrWhiteSpace(_config.WorkIqTenantId))
             env["WORKIQ_TENANT_ID"] = _config.WorkIqTenantId;
 
@@ -147,9 +169,12 @@ internal sealed class ScanOrchestrator
         return servers;
     }
 
+    /// <summary>
+    /// Creates ring availability entries defaulting to available for each selected ring.
+    /// </summary>
     private static List<RingAvailability> BuildRingAvailability(IReadOnlyList<Ring> selectedRings)
     {
-        var availability = new List<RingAvailability>();
+        List<RingAvailability> availability = [];
 
         foreach (var ring in selectedRings)
         {

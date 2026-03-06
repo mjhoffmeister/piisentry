@@ -4,6 +4,9 @@ using PiiSentry.Core.Models;
 
 namespace PiiSentry.Cli.Agents;
 
+/// <summary>
+/// Parses the Copilot agent’s JSON response into a structured <see cref="ComplianceReport"/>.
+/// </summary>
 internal static class AgentResponseParser
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -12,6 +15,10 @@ internal static class AgentResponseParser
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
     };
 
+    /// <summary>
+    /// Parses the agent response JSON into a compliance report, falling back to
+    /// a raw-output report on failure.
+    /// </summary>
     public static ComplianceReport Parse(
         string agentResponse,
         string scanPath,
@@ -19,7 +26,7 @@ internal static class AgentResponseParser
     {
         try
         {
-            var json = ExtractJson(agentResponse);
+            string? json = ExtractJson(agentResponse);
             if (json is null)
             {
                 return FallbackReport(agentResponse, scanPath, ringAvailability);
@@ -66,7 +73,7 @@ internal static class AgentResponseParser
 
     private static List<Finding> ParseFindings(JsonElement root)
     {
-        var findings = new List<Finding>();
+        List<Finding> findings = [];
 
         if (!root.TryGetProperty("findings", out var findingsElem)
             || findingsElem.ValueKind != JsonValueKind.Array)

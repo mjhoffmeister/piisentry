@@ -2,6 +2,9 @@ using Microsoft.Extensions.Configuration;
 
 namespace PiiSentry.Cli.Agents;
 
+/// <summary>
+/// Runtime configuration resolved from appsettings.json, environment variables, and CLI flags.
+/// </summary>
 internal sealed record AgentRuntimeConfig(
     string? FoundryFabricAgentId,
     string? FoundryProjectEndpoint,
@@ -35,5 +38,8 @@ internal sealed record AgentRuntimeConfig(
             ApplicationInsightsConnectionString: Normalize(config["APPLICATIONINSIGHTS_CONNECTION_STRING"] ?? config["ApplicationInsightsConnectionString"]));
     }
 
+    /// <summary>
+    /// Returns null for whitespace-only values; trims otherwise.
+    /// </summary>
     private static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

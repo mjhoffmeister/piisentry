@@ -13,7 +13,7 @@ variable "project_name" {
 variable "fabric_capacity_sku" {
   type        = string
   description = "Fabric capacity SKU."
-  default     = "F2"
+  default     = "F4"
 }
 
 variable "create_fabric_capacity" {

@@ -1,4 +1,5 @@
-﻿using PiiSentry.Cli.Auth;
+﻿using PiiSentry.Cli;
+using PiiSentry.Cli.Auth;
 using PiiSentry.Cli.Agents;
 using PiiSentry.Cli.Prompts;
 using PiiSentry.Cli.Telemetry;
@@ -91,12 +92,12 @@ IReadOnlyList<Ring> ringSelection = selectedRing switch
 
 // Verify Azure auth upfront if any ring needs Azure services
 var needsAzureAuth = ringSelection.Any(r => r is Ring.Fabric or Ring.Foundry);
+string azureIdentity = "n/a";
 if (needsAzureAuth)
 {
     try
     {
-        var identity = await AuthProvider.VerifyAsync();
-        Console.WriteLine($"Azure identity: {identity}");
+        azureIdentity = await AuthProvider.VerifyAsync();
     }
     catch (InvalidOperationException ex)
     {
@@ -105,14 +106,12 @@ if (needsAzureAuth)
     }
 }
 
-Console.WriteLine($"[Phase 4] Starting compliance scan for: {scanPath}");
-Console.WriteLine($"Rings selected: {string.Join(", ", ringSelection)}");
-Console.WriteLine($"Phase marker: {PhaseMarker.Value}");
-Console.WriteLine($"System prompt loaded ({SystemPrompt.Build(scanPath).Length} chars)");
+ConsoleUI.PrintBanner();
+ConsoleUI.PrintScanHeader(scanPath, ringSelection, azureIdentity);
 
 using var telemetry = new ScanTelemetry(runtimeConfig.ApplicationInsightsConnectionString);
 var orchestrator = new ScanOrchestrator(runtimeConfig, telemetry);
-var report = await orchestrator.ScanAsync(scanPath, ringSelection, CancellationToken.None);
+var (report, elapsed) = await orchestrator.ScanAsync(scanPath, ringSelection, CancellationToken.None);
 
 var resolvedOutput = ResolveOutputPath(outputFile);
 var ext = Path.GetExtension(resolvedOutput);
@@ -126,13 +125,7 @@ var outputContent = ext switch
 Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(resolvedOutput))!);
 await File.WriteAllTextAsync(resolvedOutput, outputContent);
 
-Console.WriteLine($"Report generated: {resolvedOutput}");
-Console.WriteLine($"Total findings: {report.Summary.TotalFindings}");
-foreach (var availability in report.RingAvailability)
-{
-    var status = availability.Available ? "available" : "unavailable";
-    Console.WriteLine($"- {availability.Ring}: {status} ({availability.Message})");
-}
+ConsoleUI.PrintSummary(report, resolvedOutput, elapsed);
 
 static void PrintUsage()
 {

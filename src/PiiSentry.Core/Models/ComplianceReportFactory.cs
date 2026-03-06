@@ -2,13 +2,22 @@ using System.Linq;
 
 namespace PiiSentry.Core.Models;
 
+/// <summary>
+/// Factory for assembling <see cref="ComplianceReport"/> instances with computed summaries.
+/// </summary>
 public static class ComplianceReportFactory
 {
+    /// <summary>
+    /// Empty reconciliation placeholder used when no cross-ring analysis is available.
+    /// </summary>
     public static readonly ReconciliationSummary EmptyReconciliation = new(
-        LakehouseGaps: Array.Empty<string>(),
-        CodificationRecommendations: Array.Empty<string>(),
-        RegulatoryDelta: Array.Empty<string>());
+        LakehouseGaps: [],
+        CodificationRecommendations: [],
+        RegulatoryDelta: []);
 
+    /// <summary>
+    /// Creates a compliance report with an automatically computed summary.
+    /// </summary>
     public static ComplianceReport Create(
         string scanPath,
         IReadOnlyList<Finding> findings,
@@ -16,9 +25,9 @@ public static class ComplianceReportFactory
         ReconciliationSummary? reconciliation = null,
         DateTimeOffset? timestamp = null)
     {
-        var reportFindings = findings ?? Array.Empty<Finding>();
-        var availability = ringAvailability ?? Array.Empty<RingAvailability>();
-        var reportReconciliation = reconciliation ?? EmptyReconciliation;
+        IReadOnlyList<Finding> reportFindings = findings ?? [];
+        IReadOnlyList<RingAvailability> availability = ringAvailability ?? [];
+        ReconciliationSummary reportReconciliation = reconciliation ?? EmptyReconciliation;
 
         return new ComplianceReport(
             ScanPath: scanPath,
@@ -29,15 +38,18 @@ public static class ComplianceReportFactory
             Summary: BuildSummary(reportFindings));
     }
 
+    /// <summary>
+    /// Computes aggregate finding counts grouped by ring and severity.
+    /// </summary>
     public static ReportSummary BuildSummary(IReadOnlyList<Finding> findings)
     {
-        var reportFindings = findings ?? Array.Empty<Finding>();
+        IReadOnlyList<Finding> reportFindings = findings ?? [];
 
-        var byRing = reportFindings
+        Dictionary<Ring, int> byRing = reportFindings
             .GroupBy(f => f.Ring)
             .ToDictionary(group => group.Key, group => group.Count());
 
-        var bySeverity = reportFindings
+        Dictionary<Severity, int> bySeverity = reportFindings
             .GroupBy(f => f.Severity)
             .ToDictionary(group => group.Key, group => group.Count());
 
