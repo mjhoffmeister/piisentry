@@ -12,3 +12,5 @@ Use this file to capture implementation-time feedback:
 - _(Phase 2)_ `SessionConfig.McpServers` integration concept is clear, but discoverability of end-to-end examples that combine local functions, MCP servers, and external REST-backed tools in one agent loop could be improved.
 - _(Phase 2)_ `AIFunctionFactory` ergonomics are good for small tools, but larger tool contracts would benefit from stronger guidance on schema design and validation patterns.
 - _(Phase 2)_ Permission-gating patterns (`OnPermissionRequest`) are promising, but practical recipes for filesystem + network + process execution combinations would reduce trial-and-error.
+- _(Phase 4)_ For production CLI scenarios, more complete .NET examples that combine `AsAIAgent`, multi-ring tool orchestration, graceful source unavailability handling, and structured report extraction would reduce implementation guesswork.
+- _(Phase 4)_ Guidance on when to prefer low-level `CopilotClient` primitives vs. Agent Framework abstractions (`AIAgent`, sessions, streaming) is still fragmented across docs and samples.

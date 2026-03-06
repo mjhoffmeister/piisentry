@@ -47,7 +47,7 @@ SEARCH_ENDPOINT="$(resolve SEARCH_ENDPOINT search_endpoint)"
 STORAGE_ACCOUNT="$(resolve STORAGE_ACCOUNT storage_account_name)"
 FOUNDRY_PROJECT_ENDPOINT="$(resolve FOUNDRY_PROJECT_ENDPOINT foundry_project_endpoint)"
 
-KNOWLEDGE_BASE_NAME="${KNOWLEDGE_BASE_NAME:-piisentry-regulatory-kb}"
+KNOWLEDGE_BASE_NAME="${KNOWLEDGE_BASE_NAME:-regulatory-knowledge-base}"
 CONTAINER_NAME="regulatory"
 INDEX_NAME="regulatory-index"
 DATASOURCE_NAME="regulatory-blob-ds"

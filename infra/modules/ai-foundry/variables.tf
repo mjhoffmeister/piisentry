@@ -122,7 +122,7 @@ variable "chat_deployment_sku" {
 variable "chat_deployment_capacity" {
   type        = number
   description = "Capacity (TPM in thousands) for the chat model deployment."
-  default     = 10
+  default     = 50
 }
 
 variable "create_bing_search" {

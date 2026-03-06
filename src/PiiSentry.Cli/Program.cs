@@ -1,18 +1,21 @@
-﻿using PiiSentry.Cli.Agents;
+﻿using PiiSentry.Cli.Auth;
+using PiiSentry.Cli.Agents;
 using PiiSentry.Cli.Prompts;
+using PiiSentry.Cli.Telemetry;
 using PiiSentry.Core;
+using PiiSentry.Core.Models;
+using PiiSentry.Core.Reports;
 
 if (args.Length == 0)
 {
-    Console.WriteLine("PII Sentry CLI");
-    Console.WriteLine("Usage: pii-sentry scan <path> [--ring fabric|workiq|foundry|all] [--output <file>] [--foundry-agent-id <id>]");
+    PrintUsage();
     return;
 }
 
 if (!string.Equals(args[0], "scan", StringComparison.OrdinalIgnoreCase))
 {
     Console.WriteLine($"Unknown command: {args[0]}");
-    Console.WriteLine("Try: pii-sentry scan <path>");
+    PrintUsage();
     return;
 }
 
@@ -67,32 +70,82 @@ for (var i = 2; i < args.Length; i++)
     }
 
     Console.WriteLine($"Unknown option: {args[i]}");
-    Console.WriteLine("Usage: pii-sentry scan <path> [--ring fabric|workiq|foundry|all] [--output <file>] [--foundry-agent-id <id>]");
+    PrintUsage();
+    return;
+}
+
+if (!Directory.Exists(scanPath) && !File.Exists(scanPath))
+{
+    Console.WriteLine($"Scan path not found: {scanPath}");
     return;
 }
 
 var runtimeConfig = AgentRuntimeConfig.Resolve(foundryAgentIdOverride);
-var ring1Enabled = selectedRing is "fabric" or "all";
-
-Console.WriteLine($"[Phase 2] Scan stub initialized for path: {scanPath}");
-Console.WriteLine($"Ring selection: {selectedRing}");
-Console.WriteLine($"Output path: {outputFile ?? "(not set)"}");
-Console.WriteLine($"Foundry project endpoint: {runtimeConfig.FoundryProjectEndpoint ?? "(not set)"}");
-Console.WriteLine($"Foundry Fabric agent id: {runtimeConfig.FoundryFabricAgentId ?? "(not set)"}");
-
-if (ring1Enabled)
+IReadOnlyList<Ring> ringSelection = selectedRing switch
 {
-    if (runtimeConfig.FoundryProjectEndpoint is null)
-    {
-        Console.WriteLine("[Warning] Ring 1 selected but FOUNDRY_PROJECT_ENDPOINT is not set.");
-    }
+    "fabric" => new[] { Ring.Fabric },
+    "workiq" => new[] { Ring.WorkIq },
+    "foundry" => new[] { Ring.Foundry },
+    _ => new[] { Ring.Fabric, Ring.WorkIq, Ring.Foundry }
+};
 
-    if (runtimeConfig.FoundryFabricAgentId is null)
+// Verify Azure auth upfront if any ring needs Azure services
+var needsAzureAuth = ringSelection.Any(r => r is Ring.Fabric or Ring.Foundry);
+if (needsAzureAuth)
+{
+    try
     {
-        Console.WriteLine("[Warning] Ring 1 selected but Foundry agent id is not set. Use --foundry-agent-id or FOUNDRY_FABRIC_AGENT_ID.");
+        var identity = await AuthProvider.VerifyAsync();
+        Console.WriteLine($"Azure identity: {identity}");
+    }
+    catch (InvalidOperationException ex)
+    {
+        Console.Error.WriteLine(ex.Message);
+        return;
     }
 }
 
+Console.WriteLine($"[Phase 4] Starting compliance scan for: {scanPath}");
+Console.WriteLine($"Rings selected: {string.Join(", ", ringSelection)}");
 Console.WriteLine($"Phase marker: {PhaseMarker.Value}");
-Console.WriteLine("System prompt loaded successfully.");
-Console.WriteLine($"Prompt length: {SystemPrompt.Text.Length} characters");
+Console.WriteLine($"System prompt loaded ({SystemPrompt.Build(scanPath).Length} chars)");
+
+using var telemetry = new ScanTelemetry(runtimeConfig.ApplicationInsightsConnectionString);
+var orchestrator = new ScanOrchestrator(runtimeConfig, telemetry);
+var report = await orchestrator.ScanAsync(scanPath, ringSelection, CancellationToken.None);
+
+var resolvedOutput = ResolveOutputPath(outputFile);
+var ext = Path.GetExtension(resolvedOutput);
+var outputContent = ext switch
+{
+    ".html" => ReportGenerator.ToHtml(report),
+    ".md" => ReportGenerator.ToMarkdown(report),
+    _ => ReportGenerator.ToJson(report)
+};
+
+Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(resolvedOutput))!);
+await File.WriteAllTextAsync(resolvedOutput, outputContent);
+
+Console.WriteLine($"Report generated: {resolvedOutput}");
+Console.WriteLine($"Total findings: {report.Summary.TotalFindings}");
+foreach (var availability in report.RingAvailability)
+{
+    var status = availability.Available ? "available" : "unavailable";
+    Console.WriteLine($"- {availability.Ring}: {status} ({availability.Message})");
+}
+
+static void PrintUsage()
+{
+    Console.WriteLine("PII Sentry CLI");
+    Console.WriteLine("Usage: pii-sentry scan <path> [--ring fabric|workiq|foundry|all] [--output <file>] [--foundry-agent-id <id>]");
+}
+
+static string ResolveOutputPath(string? outputFile)
+{
+    if (!string.IsNullOrWhiteSpace(outputFile))
+    {
+        return outputFile;
+    }
+
+    return $"pii-sentry-report-{DateTime.UtcNow:yyyyMMdd-HHmmss}.json";
+}

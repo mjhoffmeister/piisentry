@@ -30,7 +30,7 @@ param(
     [string]$SearchEndpoint,
     [string]$StorageAccount,
     [string]$FoundryProjectEndpoint,
-    [string]$KnowledgeBaseName = 'piisentry-regulatory-kb'
+    [string]$KnowledgeBaseName = 'regulatory-knowledge-base'
 )
 
 $ErrorActionPreference = 'Stop'
