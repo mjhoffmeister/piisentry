@@ -85,7 +85,7 @@ internal static class ConsoleUI
         if (UseColor)
         {
             Console.WriteLine();
-            Console.WriteLine($"  {BoldCyan}◎{Reset} {BoldYellow}◎{Reset} {BoldMagenta}◎{Reset}  {BoldWhite}PII Sentry{Reset}");
+            Console.WriteLine($"  {BoldCyan}o{Reset} {BoldYellow}o{Reset} {BoldMagenta}o{Reset}  {BoldWhite}PII Sentry{Reset}");
             Console.WriteLine($"  {Dim}Concentric-ring PII/PHI compliance analysis{Reset}");
             Console.WriteLine();
         }
@@ -151,11 +151,11 @@ internal static class ConsoleUI
             string styled = toolName switch
             {
                 "query_fabric_data_agent" =>
-                    $"  {BoldCyan}◉ Fabric IQ{Reset} {Dim}Querying codified standards{Reset}",
+                    $"  {BoldCyan}* Fabric IQ{Reset} {Dim}Querying codified standards{Reset}",
                 "query_foundry_iq" =>
-                    $"  {BoldMagenta}◉ Foundry IQ{Reset} {Dim}Querying regulatory intelligence{Reset}",
+                    $"  {BoldMagenta}* Foundry IQ{Reset} {Dim}Querying regulatory intelligence{Reset}",
                 _ when toolName.StartsWith("workiq-") =>
-                    $"  {BoldYellow}◉ Work IQ{Reset} {Dim}Querying business knowledge{Reset}",
+                    $"  {BoldYellow}* Work IQ{Reset} {Dim}Querying business knowledge{Reset}",
                 _ =>
                     $"  {Dim}  · {toolName}{Reset}"
             };
@@ -214,7 +214,7 @@ internal static class ConsoleUI
             // By ring
             foreach (var kvp in report.Summary.ByRing.OrderBy(k => k.Key))
             {
-                Console.Write($"    {RingColor(kvp.Key)}◉{Reset} {DisplayName(kvp.Key)}: {kvp.Value}  ");
+                Console.Write($"    {RingColor(kvp.Key)}*{Reset} {DisplayName(kvp.Key)}: {kvp.Value}  ");
             }
             Console.WriteLine();
             Console.WriteLine();

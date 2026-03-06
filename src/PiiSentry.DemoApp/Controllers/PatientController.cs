@@ -26,7 +26,8 @@ public sealed class PatientController(
     }
 
     [HttpPost]
-    public async Task<ActionResult<Patient>> Create([FromBody] Patient patient, CancellationToken cancellationToken)
+    public async Task<ActionResult<Patient>> Create(
+        [FromBody] Patient patient, CancellationToken cancellationToken)
     {
         Console.WriteLine($"[PII-AUDIT] Registering patient SSN={patient.Ssn}, Email={patient.Email}");
 
