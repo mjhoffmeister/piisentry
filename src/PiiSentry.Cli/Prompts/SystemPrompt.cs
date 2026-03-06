@@ -57,8 +57,9 @@ public static class SystemPrompt
         2. Identify code patterns that handle PII/PHI (e.g., personal data fields, SSNs, emails,
            health records, biometric data, database queries with PII, logging of sensitive data,
            API endpoints exposing PII, missing encryption, missing access controls).
-        3. Query the available ring tools. Call Ring 2 and Ring 3 in parallel with one broad query
-           each. For Ring 1 (query_fabric_data_agent), use a SHORT, SPECIFIC question — the Fabric
+        3. Query ALL available ring tools. Call all three simultaneously — do not wait for
+           one to finish before calling the next.
+           For Ring 1 (query_fabric_data_agent), use a SHORT, SPECIFIC question — the Fabric
            Data Agent works best with focused queries against its lakehouse tables. Examples:
            a. Ring 1 (call ONCE with a focused query): "What are our PII and PHI data categories,
               data handling requirements, and compliance controls?"
@@ -68,10 +69,12 @@ public static class SystemPrompt
            c. Ring 3: "What are the HIPAA, GDPR, and CCPA/CPRA requirements for PII/PHI
               encryption at rest and in transit, access controls, audit logging, data
               minimization, consent, biometric data, genetic data, and de-identification?"
-           Call all three tools simultaneously — do not wait for one to finish before calling the next.
-        4. Discard any potential violation that has NO substantive evidence from at least one ring tool.
-           Do NOT substitute general knowledge. If a ring returns an error or is unavailable, that
-           ring simply cannot support the finding — if no other ring provides evidence either, drop it.
+        4. For EACH potential violation, check which rings returned relevant evidence. Prefer
+           attributing to Ring 1 (Fabric) when it returned data categories, handling requirements,
+           or compliance controls that match the violation. Only attribute to Ring 2 or Ring 3
+           if Ring 1 did not provide relevant evidence for that specific finding.
+           IMPORTANT: Produce findings from ALL rings that returned substantive data — do not
+           let one ring's results overshadow another. Each ring should contribute findings.
         5. Cross-reference and reconcile remaining findings across rings.
         6. Produce a final JSON report matching the schema below.
         </workflow>

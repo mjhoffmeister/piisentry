@@ -33,10 +33,11 @@ This repository implements **PII Sentry**, a .NET 10 CLI that performs concentri
 - Run tests (when present): `dotnet test PiiSentry.slnx`
 - Validate Terraform stubs: `terraform -chdir=infra init -backend=false`, `terraform -chdir=infra validate`, and `terraform -chdir=infra fmt -check -recursive`
 
-## CI/CD Baseline
-- Workflow: `.github/workflows/deploy.yml`
-- Authentication: Azure WIF via `azure/login@v2` using repo secrets (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`).
-- Validation: restore, build, .NET format verification, and Terraform init/validate/fmt checks.
+## Deployment
+- Infrastructure: `cd infra && terraform init && terraform apply`
+- Fabric setup: Create lakehouse, load CSVs, configure Data Agent
+- Foundry agent: `infra/scripts/create-foundry-agent.sh`
+- Fabric auth (CMK): `infra/scripts/Setup-FabricAuth.ps1`
 
 ## Phase 0 Scope
 - Scaffold folder structure, baseline projects, CI stub, docs stubs, and MCP configuration.

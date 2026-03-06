@@ -37,7 +37,7 @@ flowchart TB
     end
 
     CLI -- "query_fabric_data_agent
-    (OBO identity)" --> FS
+    (Azure identity)" --> FS
     CLI -- "Native MCP tools
     (user's M365 identity)" --> WI
     CLI -- "query_foundry_iq

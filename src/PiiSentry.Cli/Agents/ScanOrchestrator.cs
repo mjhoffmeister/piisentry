@@ -1,4 +1,3 @@
-using System.Text;
 using GitHub.Copilot.SDK;
 using Microsoft.Extensions.AI;
 using PiiSentry.Cli.Prompts;
@@ -78,39 +77,18 @@ internal sealed class ScanOrchestrator
 
         ConsoleUI.PrintPhase("Scanning source files and querying rings...");
 
-        StringBuilder responseBuilder = new();
-        TaskCompletionSource done = new();
+        string prompt = $"Scan the directory '{scanPath}' for PII/PHI compliance violations. " +
+                        $"Read all relevant source files, query the available ring tools, " +
+                        $"and produce your findings as specified in your system instructions.";
 
-        using var registration = cancellationToken.Register(() => done.TrySetCanceled());
-
-        session.On(evt =>
-        {
-            switch (evt)
-            {
-                case AssistantMessageEvent msg:
-                    responseBuilder.Append(msg.Data.Content);
-                    break;
-                case SessionErrorEvent err:
-                    Console.Error.WriteLine($"  [error] {err.Data.Message}");
-                    done.TrySetException(new InvalidOperationException(
-                        $"Copilot session error: {err.Data.Message}"));
-                    break;
-                case SessionIdleEvent:
-                    done.TrySetResult();
-                    break;
-            }
-        });
-
-        var prompt = $"Scan the directory '{scanPath}' for PII/PHI compliance violations. " +
-                     $"Read all relevant source files, query the available ring tools, " +
-                     $"and produce your findings as specified in your system instructions.";
-
-        await session.SendAsync(new MessageOptions { Prompt = prompt });
-        await done.Task;
+        AssistantMessageEvent? response = await session.SendAndWaitAsync(
+            new MessageOptions { Prompt = prompt },
+            timeout: TimeSpan.FromMinutes(10),
+            cancellationToken);
 
         ConsoleUI.PrintPhase("Generating report...");
 
-        string agentResponse = responseBuilder.ToString();
+        string agentResponse = response?.Data?.Content ?? string.Empty;
         ComplianceReport report = AgentResponseParser.Parse(agentResponse, scanPath, ringAvailability);
 
         sw.Stop();

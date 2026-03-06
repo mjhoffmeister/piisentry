@@ -21,3 +21,6 @@ Thumbs.db
 
 # Existing repo artifact
 CHALLENGE_BRIEF.md
+
+# Generated output
+output/
