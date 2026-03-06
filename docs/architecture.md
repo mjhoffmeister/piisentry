@@ -7,43 +7,33 @@ PII Sentry uses a **concentric-ring model** where each ring queries a different 
 ```mermaid
 flowchart TB
     CLI["PiiSentry.Cli
-    (Copilot SDK Agent · .NET 10)"]
+    Copilot SDK Agent
+    .NET 10"]
+
+    CLI -- "Codified Standards" --> ring1
+    CLI -- "Business Knowledge" --> ring2
+    CLI -- "Regulatory Intelligence" --> ring3
 
     subgraph ring1["Ring 1 — Fabric IQ"]
-        FA["Fabric Data Agent
-        (Lakehouse tables)"]
-        FS["Foundry Agent Service
-        (FabricTool)"]
-        FA --> FS
+        FS["Foundry Agent Service"] --> FA["Fabric Data Agent"] --> LH["Lakehouse Tables"]
     end
 
     subgraph ring2["Ring 2 — Work IQ"]
-        WI["Work IQ MCP Server
-        (stdio · npx @microsoft/workiq)"]
-        M365["M365 Artifacts
-        (Word docs · Transcripts · Emails)"]
-        M365 --> WI
+        WI["Work IQ MCP"] --> M365["M365 Graph"]
     end
 
     subgraph ring3["Ring 3 — Foundry IQ"]
-        KB["AI Search Knowledge Base
-        (Agentic Retrieval)"]
-        BLOB["Blob Knowledge Source
-        (Regulatory text corpus)"]
-        BING["Bing Web Knowledge Source
-        (Real-time regulatory updates)"]
-        BLOB --> KB
-        BING --> KB
+        KB["AI Search Agentic Retrieval"] --> BLOB["Regulatory Corpus"]
+        KB --> BING["Bing Web Source"]
     end
 
-    CLI -- "query_fabric_data_agent
-    (Azure identity)" --> FS
-    CLI -- "Native MCP tools
-    (user's M365 identity)" --> WI
-    CLI -- "query_foundry_iq
-    (REST · Entra token)" --> KB
-    CLI --> REP["Compliance Report
-    JSON + HTML"]
+    ring1 -.-> REP
+    ring2 -.-> REP
+    ring3 -.-> REP
+
+    REP["Compliance Report
+    Findings, Reconciliation
+    Remediation Plan"]
 ```
 
 ## IQ Workload Mapping
@@ -80,10 +70,10 @@ PiiSentry.Cli
  ├─ Copilot SDK Agent (in-process reasoning)
  │   ├─ [built-in file ops]           → local filesystem (approved via OnPermissionRequest)
  │   ├─ query_fabric_data_agent       → Foundry Agent Service (pre-created agent + new thread)
- │   │                                   └─ FabricTool → Fabric Data Agent (OBO)
+ │   │                                   └─ FabricTool → Fabric Data Agent (Azure identity)
  │   ├─ [Work IQ MCP tools]           → native MCP via SessionConfig.McpServers
- │   │                                   (SDK-managed child process, user's M365 identity)
+ │   │                                   (SDK-managed child process, user's M365/Copilot identity)
  │   └─ query_foundry_iq              → AI Search agentic retrieval REST API (direct, Entra token)
  │
- └─ Report generation (local) → JSON + single-file HTML with concentric-ring visualization
+ └─ Report generation (local) → Markdown, HTML, or JSON
 ```
