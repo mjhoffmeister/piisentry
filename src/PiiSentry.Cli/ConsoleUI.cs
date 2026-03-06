@@ -92,7 +92,7 @@ internal static class ConsoleUI
         else
         {
             Console.WriteLine();
-            Console.WriteLine("  PII Sentry — Concentric-ring PII/PHI compliance analysis");
+            Console.WriteLine("  PII Sentry - Concentric-ring PII/PHI compliance analysis");
             Console.WriteLine();
         }
     }
@@ -131,7 +131,7 @@ internal static class ConsoleUI
     public static void PrintPhase(string message)
     {
         if (UseColor)
-            Console.WriteLine($"  {Bold}▸{Reset} {message}");
+            Console.WriteLine($"  {Bold}>{Reset} {message}");
         else
             Console.WriteLine($"  > {message}");
     }
@@ -157,7 +157,7 @@ internal static class ConsoleUI
                 _ when toolName.StartsWith("workiq-") =>
                     $"  {BoldYellow}* Work IQ{Reset} {Dim}Querying business knowledge{Reset}",
                 _ =>
-                    $"  {Dim}  · {toolName}{Reset}"
+                    $"  {Dim}  . {toolName}{Reset}"
             };
             Console.WriteLine(styled);
         }
@@ -187,7 +187,7 @@ internal static class ConsoleUI
             Console.WriteLine($"  {BoldWhite}Ring Availability{Reset}");
             foreach (RingAvailability r in report.RingAvailability)
             {
-                string icon = r.Available ? $"{BoldGreen}✓{Reset}" : $"{BoldRed}✗{Reset}";
+                string icon = r.Available ? $"{BoldGreen}[ok]{Reset}" : $"{BoldRed}[--]{Reset}";
                 string color = RingColor(r.Ring);
                 string boldColor = RingBoldColor(r.Ring);
                 Console.WriteLine($"    {icon} {boldColor}{DisplayName(r.Ring)}{Reset} {Dim}{Subtitle(r.Ring)}{Reset}");
@@ -207,7 +207,7 @@ internal static class ConsoleUI
                     Severity.Info => Blue,
                     _ => White
                 };
-                Console.WriteLine($"    {sevColor}■{Reset} {kvp.Key}: {kvp.Value}");
+                Console.WriteLine($"    {sevColor}*{Reset} {kvp.Key}: {kvp.Value}");
             }
             Console.WriteLine();
 
@@ -237,7 +237,7 @@ internal static class ConsoleUI
             foreach (RingAvailability r in report.RingAvailability)
             {
                 string icon = r.Available ? "[OK]" : "[--]";
-                Console.WriteLine($"    {icon} {DisplayName(r.Ring)} — {Subtitle(r.Ring)}");
+                Console.WriteLine($"    {icon} {DisplayName(r.Ring)} - {Subtitle(r.Ring)}");
             }
             Console.WriteLine();
 
