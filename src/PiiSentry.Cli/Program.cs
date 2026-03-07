@@ -1,4 +1,5 @@
-﻿using PiiSentry.Cli;
+﻿using GitHub.Copilot.SDK;
+using PiiSentry.Cli;
 using PiiSentry.Cli.Auth;
 using PiiSentry.Cli.Agents;
 using PiiSentry.Cli.Prompts;
@@ -24,6 +25,7 @@ var scanPath = args.Length > 1 ? args[1] : ".";
 var selectedRing = "all";
 string? outputFile = null;
 string? foundryAgentIdOverride = null;
+string? modelOverride = null;
 
 for (var i = 2; i < args.Length; i++)
 {
@@ -70,6 +72,18 @@ for (var i = 2; i < args.Length; i++)
         continue;
     }
 
+    if (string.Equals(args[i], "--model", StringComparison.OrdinalIgnoreCase))
+    {
+        if (i + 1 >= args.Length)
+        {
+            Console.WriteLine("Missing value for --model. Expected a model name (e.g. gpt-5, gpt-5.3-codex).");
+            return;
+        }
+
+        modelOverride = args[++i];
+        continue;
+    }
+
     Console.WriteLine($"Unknown option: {args[i]}");
     PrintUsage();
     return;
@@ -109,9 +123,25 @@ if (needsAzureAuth)
 ConsoleUI.PrintBanner();
 ConsoleUI.PrintScanHeader(scanPath, ringSelection, azureIdentity);
 
+// Validate model name if specified
+if (modelOverride is not null)
+{
+    ConsoleUI.PrintPhase("Validating model...");
+    await using var validationClient = new CopilotClient(new CopilotClientOptions { Cwd = Path.GetFullPath(scanPath) });
+    await validationClient.StartAsync();
+    var availableModels = await validationClient.ListModelsAsync();
+    var modelIds = availableModels.Select(m => m.Id).ToList();
+    if (!modelIds.Contains(modelOverride, StringComparer.OrdinalIgnoreCase))
+    {
+        Console.Error.WriteLine($"Model '{modelOverride}' is not available.");
+        Console.Error.WriteLine($"Available models: {string.Join(", ", modelIds)}");
+        return;
+    }
+}
+
 using var telemetry = new ScanTelemetry(runtimeConfig.ApplicationInsightsConnectionString);
 var orchestrator = new ScanOrchestrator(runtimeConfig, telemetry);
-var (report, elapsed) = await orchestrator.ScanAsync(scanPath, ringSelection, CancellationToken.None);
+var (report, elapsed) = await orchestrator.ScanAsync(scanPath, ringSelection, modelOverride, CancellationToken.None);
 
 var resolvedOutput = ResolveOutputPath(outputFile);
 var ext = Path.GetExtension(resolvedOutput);
@@ -130,7 +160,7 @@ ConsoleUI.PrintSummary(report, resolvedOutput, elapsed);
 static void PrintUsage()
 {
     Console.WriteLine("PII Sentry CLI");
-    Console.WriteLine("Usage: pii-sentry scan <path> [--ring fabric|workiq|foundry|all] [--output <file>] [--foundry-agent-id <id>]");
+    Console.WriteLine("Usage: pii-sentry scan <path> [--ring fabric|workiq|foundry|all] [--output <file>] [--model <name>] [--foundry-agent-id <id>]");
 }
 
 static string ResolveOutputPath(string? outputFile)

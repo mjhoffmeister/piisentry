@@ -29,6 +29,7 @@ internal sealed class ScanOrchestrator
     public async Task<(ComplianceReport Report, TimeSpan Elapsed)> ScanAsync(
         string scanPath,
         IReadOnlyList<Ring> selectedRings,
+        string? modelOverride,
         CancellationToken cancellationToken)
     {
         _telemetry.TrackScanStarted(scanPath, selectedRings);
@@ -47,9 +48,11 @@ internal sealed class ScanOrchestrator
         
         await client.StartAsync();
 
+        string model = modelOverride ?? DefaultModel;
+
         SessionConfig sessionConfig = new()
         {
-            Model = DefaultModel,
+            Model = model,
             Tools = tools,
             OnPermissionRequest = PermissionHandler.ApproveAll,
             SystemMessage = new SystemMessageConfig
